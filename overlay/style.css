@@ -1,0 +1,41 @@
+body {
+  margin: 0;
+  background: transparent;
+  overflow: hidden;
+  font-family: sans-serif;
+  text-align: center;
+}
+
+#donation-container {
+  position: absolute;
+  top: 40%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: rgba(0, 0, 0, 0.75);
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 12px;
+  font-size: 2rem;
+  transition: opacity 0.5s ease;
+}
+
+#donation-username {
+  font-weight: bold;
+  font-size: 1.8rem;
+  margin-bottom: 0.5rem;
+}
+
+#donation-image {
+  max-width: 300px;
+  display: block;
+  margin: 0 auto 1rem auto;
+}
+
+.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.visible {
+  opacity: 1;
+}
