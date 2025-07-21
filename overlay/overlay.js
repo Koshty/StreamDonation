@@ -5,10 +5,29 @@ const image = document.getElementById('donation-image');
 const username = document.getElementById('donation-username');
 const message = document.getElementById('donation-message');
 
-// Auto-resize font size based on content length
-function autoResizeText(element, maxFontSize = 48, minFontSize = 24) {
+// Resize username to fit one line within max width
+function fitTextToWidth(element, maxFontSize = 42, minFontSize = 22, maxWidth = 350) {
+  let fontSize = maxFontSize;
+  element.style.whiteSpace = 'nowrap';
+  element.style.fontSize = `${fontSize}px`;
+
+  // Temporarily show if hidden to measure
+  element.style.visibility = 'hidden';
+  element.style.display = 'inline-block';
+
+  while (element.scrollWidth > maxWidth && fontSize > minFontSize) {
+    fontSize -= 1;
+    element.style.fontSize = `${fontSize}px`;
+  }
+
+  element.style.visibility = 'visible';
+  element.style.display = '';
+}
+
+// Resize message based on character length
+function autoResizeText(element, maxFontSize = 40, minFontSize = 22) {
   const length = element.textContent.length;
-  const scale = Math.max(1 - (length - 30) / 100, 0.5); // shrink if too long
+  const scale = Math.max(1 - (length - 30) / 100, 0.5);
   const fontSize = Math.max(maxFontSize * scale, minFontSize);
   element.style.fontSize = `${fontSize}px`;
 }
@@ -20,8 +39,8 @@ socket.on('new-donation', (data) => {
   username.textContent = displayUsername;
   message.textContent = displayMessage;
 
-  autoResizeText(username, 42, 24);
-  autoResizeText(message, 40, 22);
+  fitTextToWidth(username, 42, 32, 350);
+  autoResizeText(message, 40, 26);
 
   if (data.imageUrl) {
     image.src = data.imageUrl;
@@ -38,5 +57,5 @@ socket.on('new-donation', (data) => {
   setTimeout(() => {
     container.classList.remove('visible');
     container.classList.add('hidden');
-  }, 7000);
+  }, 70000);
 });
