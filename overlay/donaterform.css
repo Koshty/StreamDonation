@@ -1,0 +1,85 @@
+body {
+  font-family: sans-serif;
+  background: #121212;
+  color: #f0f0f0;
+  margin: 0;
+  padding: 2rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.form-container {
+  background: #1e1e1e;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.5);
+  width: 100%;
+  max-width: 500px;
+}
+
+label {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  display: block;
+  color: #ffffff;
+}
+
+input, textarea {
+  width: 100%;
+  padding: 0.6rem;
+  margin-bottom: 1.2rem;
+  border: 1px solid #444;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: #2a2a2a;
+  color: #f0f0f0;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #aaa;
+}
+
+button {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 0.7rem 1.5rem;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #0056b3;
+}
+
+#giphyResults {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 1.5rem;
+  background: #101010;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+#giphyResults img {
+  height: 100px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 0 5px rgba(0,0,0,0.5);
+}
+
+#giphyResults img:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 10px rgba(0,0,0,0.8);
+}
+
+#status {
+  margin-top: 1rem;
+  font-weight: bold;
+  color: #00ff90;
+}

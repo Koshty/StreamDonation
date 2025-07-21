@@ -21,6 +21,20 @@ app.get('/overlay', (req, res) => {
   res.sendFile(path.join(__dirname, '../overlay/index.html'));
 });
 
+// Serve viewer form at /donate
+app.get('/donate', (req, res) => {
+  res.sendFile(path.join(__dirname, '../overlay/DonaterForm.html'));
+});
+
+app.get('/config', (req, res) => {
+  const key = process.env.GIPHY_API_KEY;
+  if (!key) {
+    console.error("⚠️ GIPHY_API_KEY is not set in .env");
+    return res.status(500).send('GIPHY key missing');
+  }
+  res.json({ giphyKey: key });
+});
+
 // Serve other overlay assets (JS, CSS, etc.)
 app.use('/overlay', express.static(path.join(__dirname, '../overlay')));
 

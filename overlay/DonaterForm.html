@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Send a Donation Message</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="/overlay/donaterform.css" />
+</head>
+<body>
+  <div class="form-container">
+    <h2>Send a Donation Message</h2>
+    <form id="donation-form">
+      <label for="username">Username</label>
+      <input type="text" id="username" placeholder="Your name" />
+
+      <label for="message">Message</label>
+      <textarea id="message" placeholder="Your message"></textarea>
+
+      <label for="giphySearch">Search GIFs</label>
+      <input type="text" id="giphySearch" placeholder="Type to search GIFs" />
+      <div id="giphyResults"></div>
+
+      <!-- Hidden input for selected GIPHY URL -->
+      <input type="hidden" id="imageUrl" />
+
+      <button type="submit">Send</button>
+    </form>
+    <p id="status"></p>
+  </div>
+
+  <script>
+    let GIPHY_API_KEY = '';
+
+    // Load GIPHY API key from backend
+    fetch('/config')
+      .then(res => res.json())
+      .then(config => {
+        GIPHY_API_KEY = config.giphyKey;
+      });
+
+    // Form submission
+    document.getElementById('donation-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const username = document.getElementById('username').value;
+      const message = document.getElementById('message').value;
+      const imageUrl = document.getElementById('imageUrl').value;
+
+      const res = await fetch('/api/donations/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, message, imageUrl })
+      });
+
+      const data = await res.json();
+      document.getElementById('status').textContent = data.success
+        ? '✅ Message sent!'
+        : '❌ Something went wrong.';
+    });
+
+    // GIPHY search integration
+    const giphyInput = document.getElementById('giphySearch');
+    const giphyResults = document.getElementById('giphyResults');
+    const imageUrlInput = document.getElementById('imageUrl');
+
+let debounceTimeout;
+
+giphyInput.addEventListener('input', () => {
+  clearTimeout(debounceTimeout);
+  debounceTimeout = setTimeout(() => {
+    searchGiphy(giphyInput.value.trim());
+  }, 500); // 500ms delay
+});
+
+async function searchGiphy(q) {
+  if (!q || !GIPHY_API_KEY) return;
+
+  try {
+    const res = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(q)}&limit=9&rating=pg`);
+    const data = await res.json();
+
+    giphyResults.innerHTML = '';
+    data.data.forEach(gif => {
+      const img = document.createElement('img');
+      img.src = gif.images.fixed_height_small.url;
+      img.title = 'Click to use this GIF';
+      img.onclick = () => {
+        imageUrlInput.value = gif.images.original.url;
+        giphyResults.innerHTML = '';
+        giphyInput.value = '';
+      };
+      giphyResults.appendChild(img);
+    });
+  } catch (err) {
+    console.error('Giphy search failed:', err);
+  }
+}
+
+  </script>
+</body>
+</html>

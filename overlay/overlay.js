@@ -6,7 +6,7 @@ const username = document.getElementById('donation-username');
 const message = document.getElementById('donation-message');
 
 socket.on('new-donation', (data) => {
-  username.textContent = data.username || 'Anonymous';
+  username.textContent = (data.username || 'Anonymous') + ' says';
   message.textContent = data.message || '';
 
   if (data.imageUrl) {
