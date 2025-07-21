@@ -11,16 +11,18 @@
     <h2>Send a Donation Message</h2>
     <form id="donation-form">
       <label for="username">Username</label>
-      <input type="text" id="username" placeholder="Your name" />
+      <input type="text" id="username" placeholder="Your name" maxlength="25" />
 
       <label for="message">Message</label>
-      <textarea id="message" placeholder="Your message"></textarea>
+      <textarea id="message" placeholder="Your message" maxlength="360"></textarea>
 
-      <label for="giphySearch">Search GIFs</label>
-      <input type="text" id="giphySearch" placeholder="Type to search GIFs" />
-      <div id="giphyResults"></div>
+      <!-- Giphy section wrapped in a container -->
+      <div id="gif-section">
+        <label for="giphySearch">Search GIFs</label>
+        <input type="text" id="giphySearch" placeholder="Type to search GIFs" />
+        <div id="giphyResults"></div>
+      </div>
 
-      <!-- Hidden input for selected GIPHY URL -->
       <input type="hidden" id="imageUrl" />
 
       <button type="submit">Send</button>
@@ -29,73 +31,76 @@
   </div>
 
   <script>
-    let GIPHY_API_KEY = '';
+    const urlParams = new URLSearchParams(window.location.search);
+    const streamer = urlParams.get('s') || 'default';
+    document.getElementById('imageUrl').value = '';
 
-    // Load GIPHY API key from backend
-    fetch('/config')
+    let GIPHY_API_KEY = '';
+    let allowGifs = true;
+    let defaultImageUrl = '';
+
+    fetch(`/config/${streamer}`)
       .then(res => res.json())
       .then(config => {
         GIPHY_API_KEY = config.giphyKey;
+        allowGifs = config.allowGifs;
+        defaultImageUrl = config.defaultImageUrl;
+
+        if (!allowGifs) {
+          const gifSection = document.getElementById('gif-section');
+          if (gifSection) gifSection.style.display = 'none';
+        }
       });
 
-    // Form submission
+    let debounceTimeout;
+    document.getElementById('giphySearch').addEventListener('input', () => {
+      clearTimeout(debounceTimeout);
+      debounceTimeout = setTimeout(() => {
+        const q = document.getElementById('giphySearch').value.trim();
+        if (!q || !GIPHY_API_KEY || !allowGifs) return;
+        searchGiphy(q);
+      }, 500);
+    });
+
+    async function searchGiphy(q) {
+      const res = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(q)}&limit=9&rating=pg`);
+      const data = await res.json();
+
+      const results = document.getElementById('giphyResults');
+      results.innerHTML = '';
+      data.data.forEach(gif => {
+        const img = document.createElement('img');
+        img.src = gif.images.fixed_height_small.url;
+        img.title = 'Click to use this GIF';
+        img.onclick = () => {
+          document.getElementById('imageUrl').value = gif.images.original.url;
+          results.innerHTML = '';
+          document.getElementById('giphySearch').value = '';
+        };
+        results.appendChild(img);
+      });
+    }
+
     document.getElementById('donation-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-
-      const username = document.getElementById('username').value;
-      const message = document.getElementById('message').value;
-      const imageUrl = document.getElementById('imageUrl').value;
+      const username = document.getElementById('username').value.slice(0, 25);
+      const message = document.getElementById('message').value.slice(0, 360);
+      let imageUrl = document.getElementById('imageUrl').value.trim();
+      if (!imageUrl && defaultImageUrl) {
+        imageUrl = defaultImageUrl;
+      }
 
       const res = await fetch('/api/donations/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, message, imageUrl })
+        body: JSON.stringify({ username, message, imageUrl, streamer })
       });
 
       const data = await res.json();
       document.getElementById('status').textContent = data.success
         ? '✅ Message sent!'
-        : '❌ Something went wrong.';
+        : '❌ ' + (data.error || 'Something went wrong.');
     });
-
-    // GIPHY search integration
-    const giphyInput = document.getElementById('giphySearch');
-    const giphyResults = document.getElementById('giphyResults');
-    const imageUrlInput = document.getElementById('imageUrl');
-
-let debounceTimeout;
-
-giphyInput.addEventListener('input', () => {
-  clearTimeout(debounceTimeout);
-  debounceTimeout = setTimeout(() => {
-    searchGiphy(giphyInput.value.trim());
-  }, 500); // 500ms delay
-});
-
-async function searchGiphy(q) {
-  if (!q || !GIPHY_API_KEY) return;
-
-  try {
-    const res = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(q)}&limit=9&rating=pg`);
-    const data = await res.json();
-
-    giphyResults.innerHTML = '';
-    data.data.forEach(gif => {
-      const img = document.createElement('img');
-      img.src = gif.images.fixed_height_small.url;
-      img.title = 'Click to use this GIF';
-      img.onclick = () => {
-        imageUrlInput.value = gif.images.original.url;
-        giphyResults.innerHTML = '';
-        giphyInput.value = '';
-      };
-      giphyResults.appendChild(img);
-    });
-  } catch (err) {
-    console.error('Giphy search failed:', err);
-  }
-}
-
   </script>
 </body>
 </html>
