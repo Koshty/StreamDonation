@@ -39,18 +39,19 @@
     let allowGifs = true;
     let defaultImageUrl = '';
 
-    fetch(`/config/${streamer}`)
-      .then(res => res.json())
-      .then(config => {
-        GIPHY_API_KEY = config.giphyKey;
-        allowGifs = config.allowGifs;
-        defaultImageUrl = config.defaultImageUrl;
+    Promise.all([
+      fetch(`/config/${streamer}`).then(res => res.json()),
+      fetch('/env-config').then(res => res.json())
+    ]).then(([config, env]) => {
+      GIPHY_API_KEY = env.giphyKey;
+      allowGifs = config.allowGifs;
+      defaultImageUrl = config.defaultImageUrl;
 
-        if (!allowGifs) {
-          const gifSection = document.getElementById('gif-section');
-          if (gifSection) gifSection.style.display = 'none';
-        }
-      });
+      if (!allowGifs) {
+        const gifSection = document.getElementById('gif-section');
+        if (gifSection) gifSection.style.display = 'none';
+      }
+    });
 
     let debounceTimeout;
     document.getElementById('giphySearch').addEventListener('input', () => {
@@ -98,7 +99,7 @@
 
       const data = await res.json();
       document.getElementById('status').textContent =
-      data.success ? (data.message || '✅ Message sent!') : '❌ ' + (data.error || 'Something went wrong.');
+      data.success ? (data.message || '✅ Message sent!') : '❌ ' + (data.error || 'Something went wrong. please contact streamer or developer');
     });
   </script>
 </body>

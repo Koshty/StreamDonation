@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let isPaused = false;
   let isDisplaying = false;
   const queue = [];
+  const shownTimestamps = new Set();
 
   // Resize text based on length
   function autoResizeText(element, maxFontSize, minFontSize, baseLength = 30) {
@@ -37,13 +38,21 @@ document.addEventListener('DOMContentLoaded', () => {
     while (queue.length > 0) {
       const data = queue[0];
 
+      if (shownTimestamps.has(data.timestamp)) {
+        console.log('[Donation] Skipping duplicate:', data.timestamp);
+        queue.shift();
+        continue;
+      }
+
       if (data.delayed && isPaused) {
+        console.log('[Donation] Skipped due to pause:', data);
         isDisplaying = false;
         return;
       }
 
       queue.shift();
       isDisplaying = true;
+      shownTimestamps.add(data.timestamp);
 
       const displayUsername = (data.username || 'Anonymous') + ' says';
       const displayMessage = data.message || '';
@@ -60,6 +69,11 @@ document.addEventListener('DOMContentLoaded', () => {
         image.style.display = 'none';
       }
 
+      console.log('[Donation] Displaying:', data);
+
+      // Reset classes first and force reflow to restart animation
+      container.classList.remove('visible', 'hidden', 'delay-visible');
+      void container.offsetWidth;
       container.classList.add('delay-visible');
 
       setTimeout(() => {
@@ -92,19 +106,23 @@ document.addEventListener('DOMContentLoaded', () => {
         isPaused = config.paused || false;
 
         if (wasPaused && !isPaused && !isDisplaying && queue.length > 0) {
+          console.log('[Donation] Resume detected, displaying next in queue');
           showNextDonation();
         }
       });
   }, 3000);
 
-  // Load recent buffered donations on initial load
+  // Load recent buffered donations on initial load (with delay)
   fetch(`/api/donations/replay/${streamer}`)
     .then(res => res.json())
     .then(data => {
       if (data.success && Array.isArray(data.queue)) {
         queue.push(...data.queue);
         if (!isPaused && !isDisplaying && queue.length > 0) {
-          showNextDonation();
+          setTimeout(() => {
+            console.log('[Donation] Showing from replay queue after load delay');
+            showNextDonation();
+          }, 1000); // 1 second delay helps OBS render in time
         }
       }
     });
@@ -113,7 +131,10 @@ document.addEventListener('DOMContentLoaded', () => {
   socket.on('new-donation', (data) => {
     queue.push(data);
     if (!isPaused && !isDisplaying) {
-      showNextDonation();
+      setTimeout(() => {
+        console.log('[Donation] Showing from socket event');
+        showNextDonation();
+      }, 300); // slight delay to ensure smooth rendering in OBS
     }
   });
 });

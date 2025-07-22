@@ -15,6 +15,9 @@ function isGiphyUrl(url) {
 // In-memory queue to replay donations for reconnects
 const donationQueue = {}; // streamer -> [donation, donation, ...]
 
+// Save last donation timestamp per streamer to prevent replay duplicates
+const lastShownTimestamps = {}; // streamer -> timestamp
+
 function addToQueue(streamer, donation) {
   if (!donationQueue[streamer]) {
     donationQueue[streamer] = [];
@@ -25,7 +28,6 @@ function addToQueue(streamer, donation) {
   }
 }
 
-// POST /api/donations/test
 router.post('/test', (req, res) => {
   const io = req.app.get('io');
   const { username = 'Anonymous', message = '', imageUrl, streamer = 'default' } = req.body;
@@ -39,7 +41,6 @@ router.post('/test', (req, res) => {
 
   let finalImageUrl = imageUrl?.trim();
 
-  // Image selection based on config
   if (!config.allowGifs) {
     finalImageUrl = config.defaultImageUrl;
   } else if (finalImageUrl && !isGiphyUrl(finalImageUrl)) {
@@ -50,17 +51,18 @@ router.post('/test', (req, res) => {
     finalImageUrl = config.defaultImageUrl;
   }
 
-  const donation = {
-    username,
-    message,
-    imageUrl: finalImageUrl,
-    delayed: config.paused
-  };
+  const timestamp = Date.now();
+  const donation = { username, message, imageUrl: finalImageUrl, delayed: config.paused, timestamp };
 
-  // Save to memory queue
+  // Save to queue
   addToQueue(streamer, donation);
 
-  // Emit only to clients in this streamer's room
+  // Update last shown time only if not paused
+  if (!config.paused) {
+    lastShownTimestamps[streamer] = timestamp;
+  }
+
+  // Emit to all clients
   io.to(streamer).emit('new-donation', donation);
 
   return res.status(200).json({
@@ -72,10 +74,11 @@ router.post('/test', (req, res) => {
   });
 });
 
-// GET /api/donations/replay/:streamer
+// Replay only unseen donations on reconnect
 router.get('/replay/:streamer', (req, res) => {
   const streamer = req.params.streamer || 'default';
-  const list = donationQueue[streamer] || [];
+  const since = lastShownTimestamps[streamer] || 0;
+  const list = (donationQueue[streamer] || []).filter(d => d.timestamp > since);
   res.json({ success: true, queue: list });
 });
 
