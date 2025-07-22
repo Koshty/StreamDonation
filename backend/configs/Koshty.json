@@ -1,4 +1,6 @@
 {
   "defaultImageUrl": "https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExM2llaXRheHc3eTdtMG14aHlpY3E3dXJka2dicWY5eGlxcnM2czUweSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/UN1oqrMgKOEgCzU4X0/giphy.gif",
-  "allowGifs": false
+  "allowGifs": true,
+  "giphyKey": "mvA3wffVPdpUqMdBfhWlXTWpYZha3yRP",
+  "paused": false
 }

@@ -97,9 +97,8 @@
       });
 
       const data = await res.json();
-      document.getElementById('status').textContent = data.success
-        ? '✅ Message sent!'
-        : '❌ ' + (data.error || 'Something went wrong.');
+      document.getElementById('status').textContent =
+      data.success ? (data.message || '✅ Message sent!') : '❌ ' + (data.error || 'Something went wrong.');
     });
   </script>
 </body>

@@ -11,7 +11,7 @@ router.get('/:streamer', (req, res) => {
     return res.status(404).json({ error: 'Streamer config not found' });
   }
 
-  const config = require(configPath);
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
   config.giphyKey = process.env.GIPHY_API_KEY;
   res.json(config);
 });

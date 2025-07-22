@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Overlay Control Panel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 1rem;
+      background: #111;
+      color: white;
+    }
+    label {
+      display: block;
+      margin-top: 1rem;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 0.5rem;
+      font-size: 1rem;
+      margin-top: 0.25rem;
+    }
+    button {
+      padding: 0.5rem 1rem;
+      margin-top: 1rem;
+      font-size: 1rem;
+    }
+    #imagePreview {
+      display: block;
+      max-width: 200px;
+      margin-top: 1rem;
+      border-radius: 8px;
+    }
+    #status {
+      margin-top: 0.5rem;
+      color: lightgreen;
+    }
+  </style>
+</head>
+<body>
+  <h2>Overlay Control Panel</h2>
+  <p id="streamer-display"></p>
+
+  <button id="togglePause">Pause</button>
+
+  <label for="imageUrl">Custom Image URL</label>
+  <input type="text" id="imageUrl" placeholder="https://example.com/image.gif" />
+  <img id="imagePreview" style="max-width: 100%; margin-top: 1rem;" />
+
+  <label>
+    <input type="checkbox" id="allowGifsToggle" />
+    Allow GIFs
+  </label>
+
+  <button id="saveImage">Save</button>
+  <p id="status"></p>
+
+  <script src="control.js"></script>
+</body>
+</html>
