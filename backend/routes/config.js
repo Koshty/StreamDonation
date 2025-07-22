@@ -12,7 +12,6 @@ router.get('/:streamer', (req, res) => {
   }
 
   const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-  config.giphyKey = process.env.GIPHY_API_KEY;
   res.json(config);
 });
 
