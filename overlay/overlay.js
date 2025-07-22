@@ -13,14 +13,26 @@ function autoResizeText(element, maxFontSize, minFontSize, baseLength = 30) {
   element.style.fontSize = `${fontSize}px`;
 }
 
-socket.on('new-donation', (data) => {
+// --- Queue System ---
+const queue = [];
+let isDisplaying = false;
+
+function showNextDonation() {
+  if (queue.length === 0) {
+    isDisplaying = false;
+    return;
+  }
+
+  isDisplaying = true;
+  const data = queue.shift();
+
   const displayUsername = (data.username || 'Anonymous') + ' says';
   const displayMessage = data.message || '';
 
   username.textContent = displayUsername;
   message.textContent = displayMessage;
 
-  autoResizeText(username, 42, 28,18);
+  autoResizeText(username, 42, 28, 18);
   autoResizeText(message, 40, 26);
 
   if (data.imageUrl) {
@@ -30,13 +42,20 @@ socket.on('new-donation', (data) => {
     image.style.display = 'none';
   }
 
-  setTimeout(() => {
-    container.classList.remove('hidden');
-    container.classList.add('visible');
-  }, 300);
+  container.classList.remove('hidden');
+  container.classList.add('visible');
 
   setTimeout(() => {
     container.classList.remove('visible');
     container.classList.add('hidden');
-  }, 70000);
+
+    // Wait 1s before showing the next one
+    setTimeout(() => showNextDonation(), 1000);
+  }, 7000); // Display each message for 7 seconds
+}
+
+// On incoming donation
+socket.on('new-donation', (data) => {
+  queue.push(data);
+  if (!isDisplaying) showNextDonation();
 });
