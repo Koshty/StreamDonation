@@ -5,6 +5,11 @@
   <title>Send a Donation Message</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="/overlay/donaterform.css" />
+  <style>
+    #giphyResults img.selected {
+      outline: 3px solid #00ffcc;
+    }
+  </style>
 </head>
 <body>
   <div class="form-container">
@@ -16,11 +21,11 @@
       <label for="message">Message</label>
       <textarea id="message" placeholder="Your message" maxlength="360"></textarea>
 
-      <!-- Giphy section wrapped in a container -->
       <div id="gif-section">
         <label for="giphySearch">Search GIFs</label>
         <input type="text" id="giphySearch" placeholder="Type to search GIFs" />
         <div id="giphyResults"></div>
+        <button id="clearGifBtn" type="button" style="display:none; margin-top: 10px;">❌ Clear GIF</button>
       </div>
 
       <input type="hidden" id="imageUrl" />
@@ -75,12 +80,20 @@
         img.title = 'Click to use this GIF';
         img.onclick = () => {
           document.getElementById('imageUrl').value = gif.images.original.url;
-          results.innerHTML = '';
-          document.getElementById('giphySearch').value = '';
+          Array.from(results.children).forEach(imgEl => imgEl.classList.remove('selected'));
+          img.classList.add('selected');
+          document.getElementById('clearGifBtn').style.display = 'inline-block';
         };
         results.appendChild(img);
       });
     }
+
+    document.getElementById('clearGifBtn').addEventListener('click', () => {
+      document.getElementById('imageUrl').value = '';
+      document.getElementById('giphySearch').value = '';
+      document.getElementById('giphyResults').innerHTML = '';
+      document.getElementById('clearGifBtn').style.display = 'none';
+    });
 
     document.getElementById('donation-form').addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -99,7 +112,7 @@
 
       const data = await res.json();
       document.getElementById('status').textContent =
-      data.success ? (data.message || '✅ Message sent!') : '❌ ' + (data.error || 'Something went wrong. please contact streamer or developer');
+        data.success ? (data.message || '✅ Message sent!') : '❌ ' + (data.error || 'Something went wrong. please contact streamer or developer');
     });
   </script>
 </body>
