@@ -40,7 +40,7 @@ router.post('/test', async (req, res) => {
 
     if (!user.allowGifs) {
       finalImageUrl = user.defaultImageUrl;
-    } else if (finalImageUrl && !isGiphyUrl(finalImageUrl)) {
+    } else if (finalImageUrl && !isGiphyUrl(finalImageUrl) && !user.defaultImageUrl) {
       return res.status(400).json({ success: false, error: 'Invalid or disallowed image.' });
     }
 
@@ -85,6 +85,21 @@ router.get('/replay/:streamer', (req, res) => {
   const since = lastShownTimestamps[streamer] || 0;
   const list = (donationQueue[streamer] || []).filter(d => d.timestamp > since);
   res.json({ success: true, queue: list });
+});
+
+// GET /api/donations/resolve/:username
+router.get('/resolve/:username', async (req, res) => {
+  try {
+    const { username } = req.params;
+    const streamer = await Streamer.findOne({ username });
+    if (!streamer) {
+      return res.status(404).json({ success: false, error: 'Streamer not found' });
+    }
+    res.json({ success: true, overlayToken: streamer.overlayToken });
+  } catch (err) {
+    console.error('[Donation Resolve Error]', err);
+    res.status(500).json({ success: false, error: 'Server error' });
+  }
 });
 
 module.exports = router;

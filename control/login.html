@@ -1,4 +1,3 @@
-<!-- control/login.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -13,13 +12,31 @@
 </head>
 <body>
   <h2>Streamer Login</h2>
-  <form id="login-form">
-    <input type="email" id="email" placeholder="Email" required />
-    <input type="password" id="password" placeholder="Password" required />
+  <form id="login-form" name="login" autocomplete="on">
+    <!-- Prevents Chrome from misfilling wrong fields -->
+    <input type="text" name="fake-username" style="display:none;" aria-hidden="true" />
+    
+    <input
+      type="email"
+      id="email"
+      name="email"
+      placeholder="Email"
+      required
+      autocomplete="email"
+    />
+    <input
+      type="password"
+      id="password"
+      name="password"
+      placeholder="Password"
+      required
+      autocomplete="current-password"
+    />
     <button type="submit">Login</button>
     <p class="error" id="error-msg"></p>
   </form>
-<p>Don't have an account? <a href="/register">Register here</a></p>
+
+  <p>Don't have an account? <a href="/register">Register here</a></p>
 
   <script>
     const form = document.getElementById('login-form');
@@ -46,7 +63,6 @@
           return;
         }
 
-        // Save token + redirect to control panel
         localStorage.setItem('token', data.token);
         window.location.href = `/control/`;
       } catch (err) {

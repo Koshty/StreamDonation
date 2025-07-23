@@ -36,9 +36,9 @@
 
   <script>
     const urlParams = new URLSearchParams(window.location.search);
-    const overlayToken = urlParams.get('id');
+    const username = urlParams.get('s'); // ?s=streamername
 
-    let streamer = null;
+    let overlayToken = '';
     let GIPHY_API_KEY = '';
     let allowGifs = true;
     let defaultImageUrl = '';
@@ -51,24 +51,24 @@
     const giphySearchInput = document.getElementById('giphySearch');
     const giphyResults = document.getElementById('giphyResults');
 
-    if (!overlayToken) {
-      statusText.textContent = '❌ Invalid link. Token missing.';
+    if (!username) {
+      statusText.textContent = '❌ Invalid link. Streamer missing.';
       donationForm.style.display = 'none';
     } else {
-      fetch(`/api/auth/resolve-token/${overlayToken}`)
+      fetch(`/api/donations/resolve/${username}`)
         .then(res => {
-          if (!res.ok) throw new Error('Invalid overlay token');
+          if (!res.ok) throw new Error('Streamer not found');
           return res.json();
         })
         .then(data => {
-          streamer = data.username;
+          overlayToken = data.overlayToken;
+
           return Promise.all([
-            fetch(`/config/${streamer}`).then(res => res.json()),
+            fetch(`/config/${username}`).then(res => res.json()),
             fetch('/env-config').then(res => res.json())
           ]);
         })
         .then(([config, env]) => {
-          console.log('[Donation] Streamer config:', config);
           GIPHY_API_KEY = env.giphyKey;
           allowGifs = config.allowGifs;
           defaultImageUrl = config.defaultImageUrl;
@@ -78,8 +78,8 @@
           }
         })
         .catch(err => {
-          console.error('[Donation] Token resolution failed:', err);
-          statusText.textContent = '❌ Invalid or expired token.';
+          console.error('[Donation] Streamer resolution failed:', err);
+          statusText.textContent = '❌ Invalid or expired link.';
           donationForm.style.display = 'none';
         });
     }
@@ -123,12 +123,12 @@
     donationForm.addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      if (!streamer) {
+      if (!username || !overlayToken) {
         statusText.textContent = '❌ Streamer not resolved. Try again.';
         return;
       }
 
-      const username = document.getElementById('username').value.slice(0, 25);
+      const sender = document.getElementById('username').value.slice(0, 25);
       const message = document.getElementById('message').value.slice(0, 360);
       let imageUrl = imageInput.value.trim();
 
@@ -139,7 +139,7 @@
       const res = await fetch('/api/donations/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, message, imageUrl, streamer })
+        body: JSON.stringify({ username: sender, message, imageUrl, streamer: username })
       });
 
       const data = await res.json();

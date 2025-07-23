@@ -64,7 +64,7 @@ fetch(`/api/streamer/${streamer}/token`, {
       const overlayToken = data.overlayToken;
       const baseUrl = window.location.origin;
       obsLinkInput.value = `${baseUrl}/overlay?id=${overlayToken}`;
-      donateLinkInput.value = `${baseUrl}/donate?id=${overlayToken}`;
+      donateLinkInput.value = `${baseUrl}/donate?s=${streamer}`;
     }
   });
 
