@@ -71,6 +71,12 @@
     function showNextDonation() {
       console.log('[Overlay] 🔁 Checking donation queue...');
 
+      if (isPaused) {
+        console.log('[Overlay] ⏸️ Overlay is paused. Not displaying any donations.');
+        isDisplaying = false;
+        return;
+      }
+
       while (queue.length > 0) {
         const data = queue[0];
 
@@ -78,12 +84,6 @@
           console.log('[Overlay] ⏩ Skipping duplicate timestamp:', data.timestamp);
           queue.shift();
           continue;
-        }
-
-        if (data.delayed && isPaused) {
-          console.log('[Overlay] ⏸️ Skipping paused donation:', data);
-          isDisplaying = false;
-          return;
         }
 
         queue.shift();
@@ -101,7 +101,6 @@
         if (data.imageUrl) {
           preloadAndShowImage(data.imageUrl);
         } else {
-          console.log('[Overlay] 🧼 No image provided. Hiding image.');
           image.style.display = 'none';
         }
 
@@ -119,32 +118,32 @@
           container.classList.add('hidden');
           setTimeout(() => {
             container.classList.remove('hidden');
-            showNextDonation();
+            isDisplaying = false;
+
+            if (!isPaused && queue.length > 0) {
+              showNextDonation();
+            } else {
+              console.log('[Overlay] ⏸️ Stopping after current donation due to pause.');
+            }
           }, 1000);
         }, 8000);
-
-        return;
-      }
+                return;
+              }
 
       console.log('[Overlay] 📭 Donation queue empty.');
       isDisplaying = false;
     }
 
-    setInterval(() => {
-      fetch(`/config/${streamer}`)
-        .then(res => res.json())
-        .then(config => {
-          console.log('[Overlay] 🔄 Fetched config:', config);
-          const wasPaused = isPaused;
-          isPaused = config.paused || false;
-          if (wasPaused && !isPaused && !isDisplaying && queue.length > 0) {
-            console.log('[Overlay] ▶️ Unpaused. Resuming queue...');
-            showNextDonation();
-          }
-        })
-        .catch(err => console.error('[Overlay] ❌ Error fetching config:', err));
-    }, 3000);
+    // ✅ Load initial pause state
+    fetch(`/config/${streamer}`)
+      .then(res => res.json())
+      .then(config => {
+        isPaused = config.paused || false;
+        console.log('[Overlay] ⏯️ Initial pause state:', isPaused);
+      })
+      .catch(err => console.error('[Overlay] ❌ Failed to fetch initial config:', err));
 
+    // ✅ Load donation queue on reconnect
     fetch(`/api/donations/replay/${streamer}`)
       .then(res => res.json())
       .then(data => {
@@ -164,10 +163,7 @@
       })
       .catch(err => console.error('[Overlay] ❌ Error loading replay donations:', err));
 
-    socket.on('connect', () => {
-      console.log('[Overlay] 🔌 Socket connected:', socket.id);
-    });
-
+    // ✅ WebSocket: new donation
     socket.on('new-donation', (data) => {
       console.log('[Overlay] 🎉 New donation received:', data);
       queue.push(data);
@@ -176,6 +172,21 @@
           showNextDonation();
         }, 300);
       }
+    });
+
+    // ✅ WebSocket: pause state change
+    socket.on('pause-state-changed', (data) => {
+      const wasPaused = isPaused;
+      isPaused = data.paused;
+      console.log('[Overlay] 🔄 Pause state updated via socket:', isPaused);
+      if (wasPaused && !isPaused && !isDisplaying && queue.length > 0) {
+        console.log('[Overlay] ▶️ Resuming from pause...');
+        showNextDonation();
+      }
+    });
+
+    socket.on('connect', () => {
+      console.log('[Overlay] 🔌 Socket connected:', socket.id);
     });
 
     socket.on('connect_error', err => {

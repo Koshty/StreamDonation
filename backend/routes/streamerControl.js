@@ -26,7 +26,7 @@ router.get('/:streamer/config', authMiddleware, async (req, res) => {
   }
 });
 
-// ✅ POST to pause/resume donations
+// ✅ POST to pause/resume donations (now with WebSocket broadcast)
 router.post('/:streamer/pause', authMiddleware, async (req, res) => {
   const { streamer } = req.params;
   const { paused } = req.body;
@@ -42,6 +42,10 @@ router.post('/:streamer/pause', authMiddleware, async (req, res) => {
       { new: true }
     );
     if (!user) return res.status(404).json({ error: 'Streamer not found' });
+
+    // ✅ Real-time update for overlays via Socket.IO
+    const io = req.app.get('io');
+    io.to(streamer).emit('pause-state-changed', { paused: user.paused });
 
     res.json({ success: true, paused: user.paused });
   } catch (err) {
