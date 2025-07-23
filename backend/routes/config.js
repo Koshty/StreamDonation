@@ -1,18 +1,22 @@
+// New version of routes/config.js using MongoDB
 const express = require('express');
-const path = require('path');
-const fs = require('fs');
 const router = express.Router();
+const Streamer = require('../models/Streamer');
 
-router.get('/:streamer', (req, res) => {
-  const { streamer } = req.params;
-  const configPath = path.join(__dirname, '../configs', `${streamer}.json`);
+router.get('/:streamer', async (req, res) => {
+  try {
+    const user = await Streamer.findOne({ username: req.params.streamer });
+    if (!user) return res.status(404).json({ error: 'Streamer not found' });
 
-  if (!fs.existsSync(configPath)) {
-    return res.status(404).json({ error: 'Streamer config not found' });
+    res.json({
+      paused: user.paused,
+      defaultImageUrl: user.defaultImageUrl,
+      allowGifs: user.allowGifs,
+    });
+  } catch (err) {
+    console.error('[CONFIG GET ERROR]', err);
+    res.status(500).json({ error: 'Server error' });
   }
-
-  const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-  res.json(config);
 });
 
 module.exports = router;

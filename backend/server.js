@@ -3,79 +3,81 @@ const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
-const configRoutes = require('./routes/config');
-const streamerControlRoutes = require('./routes/streamerControl');
-const donationRoutes = require('./routes/donations');
-require('dotenv').config();
+const dotenv = require('dotenv');
+const connectToMongoDB = require('./db');
+
+// Load env vars
+dotenv.config();
+connectToMongoDB();
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server, {
-  cors: {
-    origin: '*',
-  },
-});
+const io = socketIo(server, { cors: { origin: '*' } });
+app.set('io', io);
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-// Serve static overlay files (CSS, JS, images, etc.)
-app.use('/overlay', express.static(path.join(__dirname, '../overlay')));
+// JWT Auth
+const authMiddleware = require('./middleware/authMiddleware');
 
-// Serve overlay HTML (supports ?s=streamername)
-app.get('/overlay', (req, res) => {
-  res.sendFile(path.join(__dirname, '../overlay/index.html'));
-});
-
-// Serve viewer donation form
-app.get('/donate', (req, res) => {
-  res.sendFile(path.join(__dirname, '../overlay/DonaterForm.html'));
-});
-
-// Serve static control panel files
-app.use('/control', express.static(path.join(__dirname, '../control')));
-
-// Serve control panel HTML
-app.get('/control', (req, res) => {
-  res.sendFile(path.join(__dirname, '../control/control.html'));
-});
-
-// Streamer config, control, and donation APIs
-app.use('/config', configRoutes);
-app.use('/api/streamer', streamerControlRoutes);
-
-// Donation buffer (max 10 per streamer)
-const donationBuffer = {}; // { streamerName: [donation, ...] }
-app.set('donationBuffer', donationBuffer);
-
+// Routes
+app.use('/api/auth', require('./routes/auth'));
+app.use('/config', require('./routes/config'));
+app.use('/api/streamer', authMiddleware, require('./routes/streamerControl'));
 app.use('/api/donations', (req, res, next) => {
   req.donationBuffer = donationBuffer;
   next();
-}, donationRoutes);
+}, require('./routes/donations'));
 
-// Serve GIPHY API key (for frontend usage)
+// Donation buffer (max 10 per streamer)
+const donationBuffer = {};
+app.set('donationBuffer', donationBuffer);
+
+// Static assets
+app.use('/overlay', express.static(path.join(__dirname, '../overlay')));
+app.use('/control', express.static(path.join(__dirname, '../control')));
+
+// HTML routes
+app.get('/', (_, res) => res.sendFile(path.join(__dirname, '../control/login.html')));
+app.get('/login', (_, res) => res.sendFile(path.join(__dirname, '../control/login.html')));
+app.get('/register', (_, res) => res.sendFile(path.join(__dirname, '../control/register.html')));
+app.get('/control', (_, res) => res.sendFile(path.join(__dirname, '../control/control.html')));
+app.get('/overlay', (_, res) => res.sendFile(path.join(__dirname, '../overlay/index.html')));
+app.get('/donate', (_, res) => res.sendFile(path.join(__dirname, '../overlay/DonaterForm.html')));
+
+// GIPHY API key for frontend
 app.get('/env-config', (req, res) => {
   const key = process.env.GIPHY_API_KEY;
-  if (!key) {
-    console.error("⚠️ GIPHY_API_KEY is not set in .env");
-    return res.status(500).send('GIPHY key missing');
-  }
+  if (!key) return res.status(500).send('GIPHY key missing');
   res.json({ giphyKey: key });
 });
 
-// WebSocket setup
-io.on('connection', (socket) => {
-  console.log('🔌 Client connected:', socket.id);
+// ✅ API to resolve overlay token securely
+app.get('/api/overlay/resolve', async (req, res) => {
+  const token = req.query.id;
+  if (!token) return res.status(400).json({ error: 'Missing token' });
 
+  try {
+    const Streamer = require('./models/Streamer');
+    const streamer = await Streamer.findOne({ overlayToken: token });
+    if (!streamer) return res.status(404).json({ error: 'Not found' });
+    res.json({ username: streamer.username });
+  } catch (err) {
+    console.error('Overlay resolve error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// WebSocket handling
+io.on('connection', (socket) => {
   const streamer = socket.handshake.query?.s || 'default';
   socket.join(streamer);
 
   const buffer = donationBuffer[streamer];
-  if (buffer && buffer.length > 0) {
-    // Send buffered donations to new client
-    buffer.forEach(donation => {
-      socket.emit('new-donation', donation);
-    });
+  if (buffer?.length) {
+    buffer.forEach(d => socket.emit('new-donation', d));
   }
 
   socket.on('disconnect', () => {
@@ -83,13 +85,8 @@ io.on('connection', (socket) => {
   });
 });
 
-// Attach io to app so it's available in routes
-app.set('io', io);
-
-// Start server
+// Start
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log('📂 Overlay files served from:', path.join(__dirname, '../overlay'));
-  console.log('📂 Control panel served from:', path.join(__dirname, '../control'));
 });

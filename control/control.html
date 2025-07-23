@@ -25,6 +25,7 @@
       padding: 0.5rem 1rem;
       margin-top: 1rem;
       font-size: 1rem;
+      cursor: pointer;
     }
     #imagePreview {
       display: block;
@@ -32,7 +33,7 @@
       margin-top: 1rem;
       border-radius: 8px;
     }
-    #status {
+    #status, #copyStatus {
       margin-top: 0.5rem;
       color: lightgreen;
     }
@@ -40,6 +41,19 @@
 </head>
 <body>
   <h2>Overlay Control Panel</h2>
+
+  <h3>🎥 OBS Browser Source Link</h3>
+  <input type="text" id="obsLink" readonly />
+  <button id="copyObsBtn">📋 Copy OBS Link</button>
+
+  <h3>💸 Public Donation Link</h3>
+  <input type="text" id="donateLink" readonly />
+  <button id="copyDonateBtn">📋 Copy Donation Link</button>
+
+  <p id="copyStatus"></p>
+
+  <button onclick="logout()">Logout</button>
+
   <p id="streamer-display"></p>
 
   <button id="togglePause">Pause</button>

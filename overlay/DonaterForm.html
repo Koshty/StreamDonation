@@ -29,7 +29,6 @@
       </div>
 
       <input type="hidden" id="imageUrl" />
-
       <button type="submit">Send</button>
     </form>
     <p id="status"></p>
@@ -37,32 +36,59 @@
 
   <script>
     const urlParams = new URLSearchParams(window.location.search);
-    const streamer = urlParams.get('s') || 'default';
-    document.getElementById('imageUrl').value = '';
+    const overlayToken = urlParams.get('id');
 
+    let streamer = null;
     let GIPHY_API_KEY = '';
     let allowGifs = true;
     let defaultImageUrl = '';
 
-    Promise.all([
-      fetch(`/config/${streamer}`).then(res => res.json()),
-      fetch('/env-config').then(res => res.json())
-    ]).then(([config, env]) => {
-      GIPHY_API_KEY = env.giphyKey;
-      allowGifs = config.allowGifs;
-      defaultImageUrl = config.defaultImageUrl;
+    const donationForm = document.getElementById('donation-form');
+    const statusText = document.getElementById('status');
+    const gifSection = document.getElementById('gif-section');
+    const imageInput = document.getElementById('imageUrl');
+    const clearGifBtn = document.getElementById('clearGifBtn');
+    const giphySearchInput = document.getElementById('giphySearch');
+    const giphyResults = document.getElementById('giphyResults');
 
-      if (!allowGifs) {
-        const gifSection = document.getElementById('gif-section');
-        if (gifSection) gifSection.style.display = 'none';
-      }
-    });
+    if (!overlayToken) {
+      statusText.textContent = '❌ Invalid link. Token missing.';
+      donationForm.style.display = 'none';
+    } else {
+      fetch(`/api/auth/resolve-token/${overlayToken}`)
+        .then(res => {
+          if (!res.ok) throw new Error('Invalid overlay token');
+          return res.json();
+        })
+        .then(data => {
+          streamer = data.username;
+          return Promise.all([
+            fetch(`/config/${streamer}`).then(res => res.json()),
+            fetch('/env-config').then(res => res.json())
+          ]);
+        })
+        .then(([config, env]) => {
+          console.log('[Donation] Streamer config:', config);
+          GIPHY_API_KEY = env.giphyKey;
+          allowGifs = config.allowGifs;
+          defaultImageUrl = config.defaultImageUrl;
+
+          if (!allowGifs) {
+            gifSection.style.display = 'none';
+          }
+        })
+        .catch(err => {
+          console.error('[Donation] Token resolution failed:', err);
+          statusText.textContent = '❌ Invalid or expired token.';
+          donationForm.style.display = 'none';
+        });
+    }
 
     let debounceTimeout;
-    document.getElementById('giphySearch').addEventListener('input', () => {
+    giphySearchInput.addEventListener('input', () => {
       clearTimeout(debounceTimeout);
       debounceTimeout = setTimeout(() => {
-        const q = document.getElementById('giphySearch').value.trim();
+        const q = giphySearchInput.value.trim();
         if (!q || !GIPHY_API_KEY || !allowGifs) return;
         searchGiphy(q);
       }, 500);
@@ -71,35 +97,41 @@
     async function searchGiphy(q) {
       const res = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_API_KEY}&q=${encodeURIComponent(q)}&limit=9&rating=pg`);
       const data = await res.json();
+      giphyResults.innerHTML = '';
 
-      const results = document.getElementById('giphyResults');
-      results.innerHTML = '';
       data.data.forEach(gif => {
         const img = document.createElement('img');
         img.src = gif.images.fixed_height_small.url;
         img.title = 'Click to use this GIF';
         img.onclick = () => {
-          document.getElementById('imageUrl').value = gif.images.original.url;
-          Array.from(results.children).forEach(imgEl => imgEl.classList.remove('selected'));
+          imageInput.value = gif.images.original.url;
+          Array.from(giphyResults.children).forEach(imgEl => imgEl.classList.remove('selected'));
           img.classList.add('selected');
-          document.getElementById('clearGifBtn').style.display = 'inline-block';
+          clearGifBtn.style.display = 'inline-block';
         };
-        results.appendChild(img);
+        giphyResults.appendChild(img);
       });
     }
 
-    document.getElementById('clearGifBtn').addEventListener('click', () => {
-      document.getElementById('imageUrl').value = '';
-      document.getElementById('giphySearch').value = '';
-      document.getElementById('giphyResults').innerHTML = '';
-      document.getElementById('clearGifBtn').style.display = 'none';
+    clearGifBtn.addEventListener('click', () => {
+      imageInput.value = '';
+      giphySearchInput.value = '';
+      giphyResults.innerHTML = '';
+      clearGifBtn.style.display = 'none';
     });
 
-    document.getElementById('donation-form').addEventListener('submit', async (e) => {
+    donationForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+
+      if (!streamer) {
+        statusText.textContent = '❌ Streamer not resolved. Try again.';
+        return;
+      }
+
       const username = document.getElementById('username').value.slice(0, 25);
       const message = document.getElementById('message').value.slice(0, 360);
-      let imageUrl = document.getElementById('imageUrl').value.trim();
+      let imageUrl = imageInput.value.trim();
+
       if (!imageUrl && defaultImageUrl) {
         imageUrl = defaultImageUrl;
       }
@@ -111,8 +143,8 @@
       });
 
       const data = await res.json();
-      document.getElementById('status').textContent =
-        data.success ? (data.message || '✅ Message sent!') : '❌ ' + (data.error || 'Something went wrong. please contact streamer or developer');
+      statusText.textContent =
+        data.success ? (data.message || '✅ Message sent!') : '❌ ' + (data.error || 'Something went wrong.');
     });
   </script>
 </body>

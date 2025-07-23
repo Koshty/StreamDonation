@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Streamer Register</title>
+  <style>
+    body { font-family: sans-serif; padding: 2rem; }
+    input, button { padding: 0.5rem; margin: 0.5rem 0; width: 100%; }
+    .error { color: red; }
+  </style>
+</head>
+<body>
+  <h2>Create Streamer Account</h2>
+  <form id="register-form">
+    <input type="email" id="email" placeholder="Email" required />
+    <input type="text" id="username" placeholder="Username" required />
+    <input type="password" id="password" placeholder="Password" required />
+    <button type="submit">Register</button>
+    <p class="error" id="error-msg"></p>
+  </form>
+<p>Already have an account? <a href="/">Login here</a></p>
+
+  <script>
+    const form = document.getElementById('register-form');
+    const errorMsg = document.getElementById('error-msg');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorMsg.textContent = '';
+
+      const email = document.getElementById('email').value.trim();
+      const username = document.getElementById('username').value.trim();
+      const password = document.getElementById('password').value.trim();
+
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, username })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          errorMsg.textContent = data.error || 'Registration failed.';
+          return;
+        }
+
+        // Save token + redirect to control panel
+        localStorage.setItem('token', data.token);
+        window.location.href = `/control/`;
+      } catch (err) {
+        errorMsg.textContent = 'Something went wrong.';
+      }
+    });
+  </script>
+</body>
+</html>

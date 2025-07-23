@@ -1,66 +1,99 @@
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
 const router = express.Router();
+const Streamer = require('../models/Streamer');
+const authMiddleware = require('../middleware/authMiddleware');
 
-function getConfigPath(streamer) {
-  return path.join(__dirname, '../configs', `${streamer}.json`);
-}
-
-// GET current config for control panel
-router.get('/:streamer/config', (req, res) => {
+// ✅ GET current config for control panel (from MongoDB)
+router.get('/:streamer/config', authMiddleware, async (req, res) => {
   const { streamer } = req.params;
-  const configPath = getConfigPath(streamer);
-  let config = {
-    paused: false,
-    defaultImageUrl: '',
-    allowGifs: true,
-  };
 
-  if (fs.existsSync(configPath)) {
-    try {
-      config = { ...config, ...require(configPath) };
-    } catch (err) {
-      console.error('Error reading config:', err);
-    }
+  if (req.user.username !== streamer) {
+    return res.status(403).json({ error: 'Forbidden' });
   }
 
-  res.json(config);
+  try {
+    const user = await Streamer.findOne({ username: streamer });
+    if (!user) return res.status(404).json({ error: 'Streamer not found' });
+
+    res.json({
+      paused: user.paused,
+      defaultImageUrl: user.defaultImageUrl,
+      allowGifs: user.allowGifs,
+    });
+  } catch (err) {
+    console.error('[GET CONFIG ERROR]', err);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
-// POST to pause/resume donations
-router.post('/:streamer/pause', (req, res) => {
+// ✅ POST to pause/resume donations
+router.post('/:streamer/pause', authMiddleware, async (req, res) => {
   const { streamer } = req.params;
   const { paused } = req.body;
-  const configPath = getConfigPath(streamer);
 
-  let config = {};
-  if (fs.existsSync(configPath)) {
-    config = require(configPath);
+  if (req.user.username !== streamer) {
+    return res.status(403).json({ error: 'Forbidden' });
   }
 
-  config.paused = paused;
+  try {
+    const user = await Streamer.findOneAndUpdate(
+      { username: streamer },
+      { paused: !!paused },
+      { new: true }
+    );
+    if (!user) return res.status(404).json({ error: 'Streamer not found' });
 
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-  res.json({ success: true, paused });
+    res.json({ success: true, paused: user.paused });
+  } catch (err) {
+    console.error('[PAUSE ERROR]', err);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
-// 🔁 Combined save for image and allowGifs
-router.post('/:streamer/settings', (req, res) => {
+// ✅ POST to save image URL and allowGifs
+router.post('/:streamer/settings', authMiddleware, async (req, res) => {
   const { streamer } = req.params;
   const { imageUrl, allowGifs } = req.body;
 
-  const configPath = getConfigPath(streamer);
-  let config = {};
-  if (fs.existsSync(configPath)) {
-    config = require(configPath);
+  if (req.user.username !== streamer) {
+    return res.status(403).json({ error: 'Forbidden' });
   }
 
-  config.defaultImageUrl = imageUrl;
-  config.allowGifs = !!allowGifs;
+  try {
+    const user = await Streamer.findOneAndUpdate(
+      { username: streamer },
+      {
+        defaultImageUrl: imageUrl,
+        allowGifs: !!allowGifs,
+      },
+      { new: true }
+    );
+    if (!user) return res.status(404).json({ error: 'Streamer not found' });
 
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-  res.json({ success: true });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[SETTINGS ERROR]', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ✅ GET overlay token for OBS/browser source
+router.get('/:streamer/token', authMiddleware, async (req, res) => {
+  const { streamer } = req.params;
+
+  if (req.user.username !== streamer) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  try {
+    const user = await Streamer.findOne({ username: streamer });
+    if (!user) return res.status(404).json({ error: 'Streamer not found' });
+
+    res.json({ success: true, overlayToken: user.overlayToken });
+  } catch (err) {
+    console.error('[TOKEN FETCH ERROR]', err);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 module.exports = router;
