@@ -1,6 +1,39 @@
 const express = require('express');
 const router = express.Router();
+const fs = require('fs');
+const path = require('path');
 const Streamer = require('../models/Streamer');
+const leoProfanity = require('leo-profanity');
+
+// ✅ Load built-in English list first
+leoProfanity.loadDictionary();
+
+// ✅ Load Arabic words (if available)
+try {
+  const arabicWords = JSON.parse(
+    fs.readFileSync(path.join(__dirname, '../Utils/arabic.json'), 'utf-8')
+  );
+  leoProfanity.add(arabicWords.words);
+} catch (err) {
+  console.warn('⚠️ Arabic wordlist not loaded:', err.message);
+}
+
+// ✅ Normalize Arabic input for reliable profanity detection
+function normalizeProfanityInput(text) {
+  return text
+    .replace(/[\u064B-\u0652]/g, '')     // Remove diacritics
+    .replace(/ـ+/g, '')                  // Remove tatweel
+    .replace(/\s+/g, '')                 // Remove spaces
+    .replace(/[^\u0621-\u064Aa-zA-Z]/g, '') // Remove symbols & non-Arabic/English letters
+    .replace(/(.)\1{2,}/g, '$1')         // Collapse repeated letters
+    .normalize('NFC');
+}
+
+// ✅ Manual contains-style profanity match
+function containsProfanity(text) {
+  const badWords = leoProfanity.list();
+  return badWords.some(word => text.includes(word));
+}
 
 // In-memory queue to replay donations for reconnects
 const donationQueue = {}; // streamer -> [donation, donation, ...]
@@ -29,6 +62,16 @@ function addToQueue(streamer, donation) {
 router.post('/test', async (req, res) => {
   const io = req.app.get('io');
   const { username = 'Anonymous', message = '', imageUrl, streamer = 'default' } = req.body;
+
+  const cleanUsername = normalizeProfanityInput(username);
+  const cleanMessage = normalizeProfanityInput(message);
+
+  if (containsProfanity(cleanUsername) || containsProfanity(cleanMessage)) {
+    return res.status(400).json({
+      success: false,
+      error: '❌ Profanity is not allowed in username or message.',
+    });
+  }
 
   try {
     const user = await Streamer.findOne({ username: streamer });
