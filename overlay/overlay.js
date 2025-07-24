@@ -96,7 +96,18 @@
         message.textContent = data.message || '';
 
         autoResizeText(username, 42, 28, 18);
-        autoResizeText(message, 40, 26);
+
+        // 👇 Dynamic font sizing for long messages
+        const len = message.textContent.length;
+        if (len > 400) {
+          message.style.fontSize = '1.6rem';
+        } else if (len > 300) {
+          message.style.fontSize = '1.8rem';
+        } else if (len > 200) {
+          message.style.fontSize = '2rem';
+        } else {
+          message.style.fontSize = '2.4rem';
+        }
 
         if (data.imageUrl) {
           preloadAndShowImage(data.imageUrl);
