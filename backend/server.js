@@ -80,6 +80,12 @@ io.on('connection', (socket) => {
     buffer.forEach(d => socket.emit('new-donation', d));
   }
 
+  // ✅ Forward donation removal to overlays
+  socket.on('remove-donation', (donationId) => {
+    console.log(`🧹 Received remove-donation for ${donationId}, forwarding to overlays in room: ${streamer}`);
+    io.to(streamer).emit('remove-donation', donationId);
+  });
+
   socket.on('disconnect', () => {
     console.log('❌ Client disconnected:', socket.id);
   });

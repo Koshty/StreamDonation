@@ -196,19 +196,24 @@ router.delete('/:id', async (req, res) => {
 
 // ✅ POST /api/donations/mark-shown/:id
 router.post('/mark-shown/:id', async (req, res) => {
+  const Donation = require('../models/Donation');
+  const io = req.app.get('io'); // 👈 get io instance
+  const { id } = req.params;
+
   try {
-    const updated = await Donation.findByIdAndUpdate(
-      req.params.id,
-      { shown: true },
-      { new: true }
-    );
-    if (!updated) {
-      return res.status(404).json({ success: false, error: 'Donation not found' });
-    }
+    const donation = await Donation.findById(id);
+    if (!donation) return res.status(404).json({ success: false, error: 'Not found' });
+
+    donation.shown = true;
+    await donation.save();
+
+    // 💬 Broadcast to overlays to remove this donation
+    io.to(donation.streamerToken).emit('mark-shown-sync', donation._id);
+
     res.json({ success: true });
   } catch (err) {
-    console.error('[Mark as Shown Error]', err);
-    res.status(500).json({ success: false, error: 'Failed to mark donation as shown' });
+    console.error('Error marking donation as shown:', err);
+    res.status(500).json({ success: false, error: 'Server error' });
   }
 });
 

@@ -23,6 +23,8 @@ if (!streamer) {
   window.location.href = '/login';
 }
 
+const socket = io({ query: { s: streamer } }); // ✅ moved AFTER streamer is declared
+
 document.getElementById('streamer-display').textContent = `Streamer: ${streamer}`;
 
 const toggleBtn = document.getElementById('togglePause');
@@ -38,6 +40,7 @@ const filterSelect = document.getElementById('donationFilter');
 
 let isPaused = false;
 
+// Load streamer config
 fetch(`/api/streamer/${streamer}/config`, {
   headers: { 'Authorization': 'Bearer ' + token }
 })
@@ -57,6 +60,7 @@ fetch(`/api/streamer/${streamer}/config`, {
     window.location.href = '/login';
   });
 
+// OBS + donation link setup
 fetch(`/api/streamer/${streamer}/token`, {
   headers: { 'Authorization': 'Bearer ' + token }
 })
@@ -152,76 +156,70 @@ async function loadDonationHistory() {
       return;
     }
 
-for (const d of donations) {
-  const card = document.createElement('div');
-  card.className = 'donation-card';
+    for (const d of donations) {
+      const card = document.createElement('div');
+      card.className = 'donation-card';
 
-  const time = new Date(d.timestamp).toLocaleTimeString([], {
-    hour: '2-digit', minute: '2-digit', hour12: true
-  });
+      const time = new Date(d.timestamp).toLocaleTimeString([], {
+        hour: '2-digit', minute: '2-digit', hour12: true
+      });
 
-  const info = document.createElement('div');
-  info.className = 'donation-info';
+      const info = document.createElement('div');
+      info.className = 'donation-info';
 
-  // Build fields array without time for now
-  const fields = [
-    { label: '👤 Username', value: d.username },
-    { label: '💬 Message', value: d.message }
-    // We'll insert image here if present
-    // Time will be added after image
-  ];
+      const fields = [
+        { label: '👤 Username', value: d.username },
+        { label: '💬 Message', value: d.message }
+      ];
 
-  // Add fields before image
-  for (const field of fields) {
-    const div = document.createElement('div');
-    div.innerHTML = `<strong>${field.label}:</strong> ${escapeHTML(field.value)}`;
-    info.appendChild(div);
-  }
+      for (const field of fields) {
+        const div = document.createElement('div');
+        div.innerHTML = `<strong>${field.label}:</strong> ${escapeHTML(field.value)}`;
+        info.appendChild(div);
+      }
 
-  // Insert image between message and time
-  if (d.imageUrl) {
-    const imgDiv = document.createElement('div');
-    const img = document.createElement('img');
-    img.src = d.imageUrl;
-    img.alt = 'Donation image';
-    imgDiv.appendChild(img);
-    info.appendChild(imgDiv);
-  }
+      if (d.imageUrl) {
+        const imgDiv = document.createElement('div');
+        const img = document.createElement('img');
+        img.src = d.imageUrl;
+        img.alt = 'Donation image';
+        imgDiv.appendChild(img);
+        info.appendChild(imgDiv);
+      }
 
-  // Add time, amount, and status fields after image
-  const afterFields = [
-    { label: '🕒 Time', value: time },
-    { label: '💰 Amount', value: `${d.amount} EGP` },
-    { label: 'Status', value: d.shown ? '✅ Shown' : '⏸️ Waiting' }
-  ];
-  for (const field of afterFields) {
-    const div = document.createElement('div');
-    div.innerHTML = `<strong>${field.label}:</strong> ${escapeHTML(field.value)}`;
-    info.appendChild(div);
-  }
+      const afterFields = [
+        { label: '🕒 Time', value: time },
+        { label: '💰 Amount', value: `${d.amount} EGP` },
+        { label: 'Status', value: d.shown ? '✅ Shown' : '⏸️ Waiting' }
+      ];
+      for (const field of afterFields) {
+        const div = document.createElement('div');
+        div.innerHTML = `<strong>${field.label}:</strong> ${escapeHTML(field.value)}`;
+        info.appendChild(div);
+      }
 
-  card.appendChild(info);
+      card.appendChild(info);
 
-  const actions = document.createElement('div');
-  actions.className = 'actions';
+      const actions = document.createElement('div');
+      actions.className = 'actions';
 
-  if (!d.shown) {
-    const mark = document.createElement('button');
-    mark.className = 'mark-shown-btn';
-    mark.textContent = '✅ Mark as Shown';
-    mark.dataset.id = d._id;
-    actions.appendChild(mark);
-  }
+      if (!d.shown) {
+        const mark = document.createElement('button');
+        mark.className = 'mark-shown-btn';
+        mark.textContent = '✅ Mark as Shown';
+        mark.dataset.id = d._id;
+        actions.appendChild(mark);
+      }
 
-  const del = document.createElement('button');
-  del.className = 'delete-btn';
-  del.textContent = '🗑️ Delete';
-  del.dataset.id = d._id;
-  actions.appendChild(del);
+      const del = document.createElement('button');
+      del.className = 'delete-btn';
+      del.textContent = '🗑️ Delete';
+      del.dataset.id = d._id;
+      actions.appendChild(del);
 
-  card.appendChild(actions);
-  container.appendChild(card);
-}
+      card.appendChild(actions);
+      container.appendChild(card);
+    }
 
     document.querySelectorAll('.delete-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
@@ -240,8 +238,12 @@ for (const d of donations) {
         const id = btn.dataset.id;
         const res = await fetch(`/api/donations/mark-shown/${id}`, { method: 'POST' });
         const result = await res.json();
-        if (result.success) loadDonationHistory();
-        else alert('❌ Failed to mark as shown.');
+        if (result.success) {
+          socket.emit('remove-donation', id); // ✅ tell overlay to remove it
+          loadDonationHistory();
+        } else {
+          alert('❌ Failed to mark as shown.');
+        }
       });
     });
 

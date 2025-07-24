@@ -120,7 +120,7 @@
             container.classList.remove('hidden');
             isDisplaying = false;
 
-            // ✅ Mark as shown in MongoDB
+            // ✅ Mark as shown in DB
             if (data._id) {
               fetch(`/api/donations/mark-shown/${data._id}`, {
                 method: 'POST'
@@ -161,8 +161,9 @@
       .then(data => {
         console.log('[Overlay] 🕘 Replay queue loaded:', data);
         if (data.success && Array.isArray(data.queue)) {
-          queue.push(...data.queue);
-          console.log(`[Overlay] 📦 Pushed ${data.queue.length} donations into queue`);
+          const unseen = data.queue.filter(d => !d.shown);
+          queue.push(...unseen);
+          console.log(`[Overlay] 📦 Pushed ${unseen.length} unseen donations into queue`);
           if (!isPaused && !isDisplaying && queue.length > 0) {
             setTimeout(() => {
               console.log('[Overlay] ▶️ Showing replayed donations...');
@@ -178,11 +179,15 @@
     // ✅ WebSocket: new donation
     socket.on('new-donation', (data) => {
       console.log('[Overlay] 🎉 New donation received:', data);
-      queue.push(data);
-      if (!isPaused && !isDisplaying) {
-        setTimeout(() => {
-          showNextDonation();
-        }, 300);
+      if (!data.shown) {
+        queue.push(data);
+        if (!isPaused && !isDisplaying) {
+          setTimeout(() => {
+            showNextDonation();
+          }, 300);
+        }
+      } else {
+        console.log('[Overlay] 🚫 Skipping already shown donation');
       }
     });
 
@@ -195,6 +200,16 @@
         console.log('[Overlay] ▶️ Resuming from pause...');
         showNextDonation();
       }
+    });
+
+    // ✅ WebSocket: remove donation from queue (manual control panel action)
+    socket.on('remove-donation', (idToRemove) => {
+      const before = queue.length;
+      const filtered = queue.filter(d => d._id !== idToRemove);
+      queue.length = 0;
+      queue.push(...filtered);
+      const after = queue.length;
+      console.log(`[Overlay] 🧹 Removed ${before - after} donation(s) with ID ${idToRemove}`);
     });
 
     socket.on('connect', () => {
