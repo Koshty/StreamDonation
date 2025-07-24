@@ -19,6 +19,8 @@ try {
   console.warn('⚠️ Arabic wordlist not loaded:', err.message);
 }
 
+leoProfanity.remove(['ass','bitch']);
+
 // ✅ Normalize Arabic/English input
 function normalizeProfanityInput(text) {
   return text
@@ -30,10 +32,10 @@ function normalizeProfanityInput(text) {
     .normalize('NFC');
 }
 
-// ✅ Manual "contains-style" profanity match
-function containsProfanity(text) {
+// ✅ Manual match and return list of matched profanities
+function getMatchedProfanities(text) {
   const badWords = leoProfanity.list();
-  return badWords.some(word => text.includes(word));
+  return badWords.filter(word => text.includes(word));
 }
 
 // In-memory queue and timestamps
@@ -67,12 +69,17 @@ router.post('/test', async (req, res) => {
   const cleanUsername = normalizeProfanityInput(username);
   const cleanMessage = normalizeProfanityInput(message);
 
-  if (containsProfanity(cleanUsername) || containsProfanity(cleanMessage)) {
-    return res.status(400).json({
-      success: false,
-      error: '❌ Profanity is not allowed in username or message.',
-    });
-  }
+const badUsernameWords = getMatchedProfanities(cleanUsername);
+const badMessageWords = getMatchedProfanities(cleanMessage);
+
+if (badUsernameWords.length || badMessageWords.length) {
+  const allBadWords = [...badUsernameWords, ...badMessageWords];
+  const uniqueWords = [...new Set(allBadWords)].join(', ');
+  return res.status(400).json({
+    success: false,
+    error: `❌ Profanity is not allowed in username or message. Blocked word(s): ${uniqueWords}`
+  });
+}
 
   try {
     const user = await Streamer.findOne({ username: streamer });
