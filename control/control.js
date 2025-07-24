@@ -7,10 +7,15 @@ function getUsernameFromToken(token) {
   }
 }
 
-const token = localStorage.getItem('token');
-if (!token) {
-  window.location.href = '/login';
+function escapeHTML(str) {
+  return String(str).replace(/[&<>"']/g, m => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;',
+    '"': '&quot;', "'": '&#39;'
+  })[m]);
 }
+
+const token = localStorage.getItem('token');
+if (!token) window.location.href = '/login';
 
 const streamer = getUsernameFromToken(token);
 if (!streamer) {
@@ -33,11 +38,8 @@ const filterSelect = document.getElementById('donationFilter');
 
 let isPaused = false;
 
-// Load current config
 fetch(`/api/streamer/${streamer}/config`, {
-  headers: {
-    'Authorization': 'Bearer ' + token
-  }
+  headers: { 'Authorization': 'Bearer ' + token }
 })
   .then(res => {
     if (!res.ok) throw new Error('Unauthorized');
@@ -50,51 +52,42 @@ fetch(`/api/streamer/${streamer}/config`, {
     allowGifsCheckbox.checked = !!data.allowGifs;
     toggleBtn.textContent = isPaused ? 'Resume' : 'Pause';
   })
-  .catch(err => {
+  .catch(() => {
     localStorage.removeItem('token');
     window.location.href = '/login';
   });
 
-// Load overlay token to build OBS and donate links
 fetch(`/api/streamer/${streamer}/token`, {
   headers: { 'Authorization': 'Bearer ' + token }
 })
   .then(res => res.json())
   .then(data => {
     if (data.success && data.overlayToken) {
-      const overlayToken = data.overlayToken;
       const baseUrl = window.location.origin;
-      obsLinkInput.value = `${baseUrl}/overlay?id=${overlayToken}`;
+      obsLinkInput.value = `${baseUrl}/overlay?id=${data.overlayToken}`;
       donateLinkInput.value = `${baseUrl}/donate?s=${streamer}`;
     }
   });
 
-// ✅ Modern clipboard copy function
 function copyToClipboard(elementId) {
   const input = document.getElementById(elementId);
   if (!input) return;
-
-  navigator.clipboard.writeText(input.value).then(() => {
-    copyStatus.textContent = `✅ Copied ${elementId === 'obsLink' ? 'OBS' : 'donation'} link!`;
-    setTimeout(() => {
-      copyStatus.textContent = '';
-    }, 2000);
-  }).catch(err => {
-    console.error('Clipboard copy failed', err);
-    copyStatus.textContent = '❌ Failed to copy.';
-  });
+  navigator.clipboard.writeText(input.value)
+    .then(() => {
+      copyStatus.textContent = `✅ Copied ${elementId === 'obsLink' ? 'OBS' : 'donation'} link!`;
+      setTimeout(() => copyStatus.textContent = '', 2000);
+    })
+    .catch(() => copyStatus.textContent = '❌ Failed to copy.');
 }
 
 document.getElementById('copyObsBtn').addEventListener('click', () => copyToClipboard('obsLink'));
 document.getElementById('copyDonateBtn').addEventListener('click', () => copyToClipboard('donateLink'));
 
-// Logout function
 function logout() {
   localStorage.removeItem('token');
   window.location.href = '/login';
 }
 
-// Pause/resume toggle
 toggleBtn.onclick = async () => {
   const newPaused = !isPaused;
   await fetch(`/api/streamer/${streamer}/pause`, {
@@ -109,7 +102,6 @@ toggleBtn.onclick = async () => {
   toggleBtn.textContent = isPaused ? 'Resume' : 'Pause';
 };
 
-// Save button: image + GIF toggle
 saveBtn.onclick = async () => {
   const imageUrl = imageInput.value.trim();
   const allowGifs = allowGifsCheckbox.checked;
@@ -127,18 +119,12 @@ saveBtn.onclick = async () => {
   status.textContent = data.success ? '✅ Settings saved!' : '❌ Failed to save.';
   if (data.success) {
     imagePreview.src = imageUrl || '';
-    setTimeout(() => {
-      status.textContent = '';
-    }, 3000);
+    setTimeout(() => status.textContent = '', 3000);
   }
 };
 
-// ✅ Load donation history with filter, delete, and mark-as-shown support
 async function loadDonationHistory() {
   try {
-    console.log('[Control] Fetching donation history for:', streamer);
-
-    // First resolve overlayToken
     const tokenRes = await fetch(`/api/streamer/${streamer}/token`, {
       headers: { 'Authorization': 'Bearer ' + token }
     });
@@ -147,8 +133,6 @@ async function loadDonationHistory() {
 
     const res = await fetch(`/api/donations/history/${overlayToken}`);
     const data = await res.json();
-
-    console.log('[Control] API response:', data);
 
     const container = document.getElementById('donation-history');
     const filter = filterSelect?.value || 'all';
@@ -160,90 +144,116 @@ async function loadDonationHistory() {
     }
 
     let donations = data.donations;
-
-    if (filter === 'waiting') {
-      donations = donations.filter(d => !d.shown);
-    } else if (filter === 'shown') {
-      donations = donations.filter(d => d.shown);
-    }
+    if (filter === 'waiting') donations = donations.filter(d => !d.shown);
+    else if (filter === 'shown') donations = donations.filter(d => d.shown);
 
     if (donations.length === 0) {
       container.textContent = 'No donations match the selected filter.';
       return;
     }
 
-    donations.forEach(d => {
-      const item = document.createElement('div');
-      item.style.marginBottom = '10px';
+for (const d of donations) {
+  const card = document.createElement('div');
+  card.className = 'donation-card';
 
-      const time = new Date(d.timestamp).toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-      });
+  const time = new Date(d.timestamp).toLocaleTimeString([], {
+    hour: '2-digit', minute: '2-digit', hour12: true
+  });
 
-      item.innerHTML = `
-        <div>👤 <strong>Username:</strong> ${d.username}</div>
-        <div>💬 <strong>Message:</strong> ${d.message}</div>
-        <div>🕒 <strong>Time:</strong> ${time}</div>
-        <div>💰 <strong>Amount:</strong> ${d.amount} EGP</div>
-        <div>Status: ${d.shown ? '✅ Shown' : '⏸️ Waiting'}</div>
-        ${d.imageUrl ? `<div><img src="${d.imageUrl}" style="max-width: 150px; border-radius: 6px; margin-top: 6px;" /></div>` : ''}
-        <div style="margin-top: 6px;">
-          ${!d.shown ? `<button data-id="${d._id}" class="mark-shown-btn">✅ Mark as Shown</button>` : ''}
-          <button data-id="${d._id}" class="delete-btn">🗑️ Delete</button>
-        </div>
-        <hr />
-      `;
+  const info = document.createElement('div');
+  info.className = 'donation-info';
 
-      container.appendChild(item);
-    });
+  // Build fields array without time for now
+  const fields = [
+    { label: '👤 Username', value: d.username },
+    { label: '💬 Message', value: d.message }
+    // We'll insert image here if present
+    // Time will be added after image
+  ];
 
-    // Attach delete button handlers
+  // Add fields before image
+  for (const field of fields) {
+    const div = document.createElement('div');
+    div.innerHTML = `<strong>${field.label}:</strong> ${escapeHTML(field.value)}`;
+    info.appendChild(div);
+  }
+
+  // Insert image between message and time
+  if (d.imageUrl) {
+    const imgDiv = document.createElement('div');
+    const img = document.createElement('img');
+    img.src = d.imageUrl;
+    img.alt = 'Donation image';
+    imgDiv.appendChild(img);
+    info.appendChild(imgDiv);
+  }
+
+  // Add time, amount, and status fields after image
+  const afterFields = [
+    { label: '🕒 Time', value: time },
+    { label: '💰 Amount', value: `${d.amount} EGP` },
+    { label: 'Status', value: d.shown ? '✅ Shown' : '⏸️ Waiting' }
+  ];
+  for (const field of afterFields) {
+    const div = document.createElement('div');
+    div.innerHTML = `<strong>${field.label}:</strong> ${escapeHTML(field.value)}`;
+    info.appendChild(div);
+  }
+
+  card.appendChild(info);
+
+  const actions = document.createElement('div');
+  actions.className = 'actions';
+
+  if (!d.shown) {
+    const mark = document.createElement('button');
+    mark.className = 'mark-shown-btn';
+    mark.textContent = '✅ Mark as Shown';
+    mark.dataset.id = d._id;
+    actions.appendChild(mark);
+  }
+
+  const del = document.createElement('button');
+  del.className = 'delete-btn';
+  del.textContent = '🗑️ Delete';
+  del.dataset.id = d._id;
+  actions.appendChild(del);
+
+  card.appendChild(actions);
+  container.appendChild(card);
+}
+
     document.querySelectorAll('.delete-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
-        const id = btn.getAttribute('data-id');
+        const id = btn.dataset.id;
         if (confirm('Delete this donation?')) {
           const res = await fetch(`/api/donations/${id}`, { method: 'DELETE' });
           const result = await res.json();
-          if (result.success) {
-            loadDonationHistory();
-          } else {
-            alert('❌ Failed to delete donation.');
-          }
+          if (result.success) loadDonationHistory();
+          else alert('❌ Failed to delete donation.');
         }
       });
     });
 
-    // Attach mark-as-shown handlers
     document.querySelectorAll('.mark-shown-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
-        const id = btn.getAttribute('data-id');
+        const id = btn.dataset.id;
         const res = await fetch(`/api/donations/mark-shown/${id}`, { method: 'POST' });
         const result = await res.json();
-        if (result.success) {
-          loadDonationHistory();
-        } else {
-          alert('❌ Failed to mark donation as shown.');
-        }
+        if (result.success) loadDonationHistory();
+        else alert('❌ Failed to mark as shown.');
       });
     });
 
   } catch (err) {
     console.error('[Control] Failed to load donation history:', err);
     const container = document.getElementById('donation-history');
-    container.textContent = 'Error loading donation history.';
+    container.textContent = 'Error loading donation history. Please try again.';
   }
 }
 
-
-
-// ✅ Load on page ready
 window.addEventListener('DOMContentLoaded', () => {
   loadDonationHistory();
-  setInterval(loadDonationHistory, 5000); // auto-refresh every 10s
-
-  if (filterSelect) {
-    filterSelect.addEventListener('change', loadDonationHistory);
-  }
+  setInterval(loadDonationHistory, 5000);
+  filterSelect?.addEventListener('change', loadDonationHistory);
 });

@@ -11,31 +11,74 @@
       background: #111;
       color: white;
     }
+
     label {
       display: block;
       margin-top: 1rem;
     }
+
     input[type="text"] {
       width: 100%;
       padding: 0.5rem;
       font-size: 1rem;
       margin-top: 0.25rem;
     }
+
     button {
       padding: 0.5rem 1rem;
       margin-top: 1rem;
       font-size: 1rem;
       cursor: pointer;
     }
+
     #imagePreview {
       display: block;
       max-width: 200px;
       margin-top: 1rem;
       border-radius: 8px;
     }
+
     #status, #copyStatus {
       margin-top: 0.5rem;
       color: lightgreen;
+    }
+
+    #donation-history {
+      max-height: 800px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin-top: 1rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    .donation-card {
+      background: #1e1e1e;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #555;
+      display: flex;
+      flex-direction: column;
+      font-size: 0.9rem;
+      word-break: break-word;
+    }
+
+    .donation-card img {
+      height: 100px;
+      width: auto;
+      object-fit: contain;
+      border-radius: 8px;
+      margin-top: 6px;
+      align-self: flex-start;
+    }
+
+    .actions {
+      margin-top: 10px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
     }
   </style>
 </head>
@@ -71,13 +114,13 @@
   <p id="status"></p>
 
   <label for="donationFilter"><strong>Filter:</strong></label>
-<select id="donationFilter">
-  <option value="all">All</option>
-  <option value="waiting">Waiting</option>
-  <option value="shown">Shown</option>
-</select>
+  <select id="donationFilter">
+    <option value="all">All</option>
+    <option value="waiting">Waiting</option>
+    <option value="shown">Shown</option>
+  </select>
 
-  <div id="donation-history" style="max-height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; margin-top: 1rem;"></div>
+  <div id="donation-history"></div>
 
   <script src="control.js"></script>
 </body>
