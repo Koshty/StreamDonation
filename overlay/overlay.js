@@ -120,6 +120,18 @@
             container.classList.remove('hidden');
             isDisplaying = false;
 
+            // ✅ Mark as shown in MongoDB
+            if (data._id) {
+              fetch(`/api/donations/mark-shown/${data._id}`, {
+                method: 'POST'
+              }).then(res => res.json())
+                .then(result => {
+                  console.log('[Overlay] ✅ Marked donation as shown:', result);
+                }).catch(err => {
+                  console.error('[Overlay] ❌ Failed to mark donation as shown:', err);
+                });
+            }
+
             if (!isPaused && queue.length > 0) {
               showNextDonation();
             } else {
@@ -127,8 +139,8 @@
             }
           }, 1000);
         }, 8000);
-                return;
-              }
+        return;
+      }
 
       console.log('[Overlay] 📭 Donation queue empty.');
       isDisplaying = false;

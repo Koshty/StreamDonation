@@ -70,6 +70,15 @@
   <button id="saveImage">Save</button>
   <p id="status"></p>
 
+  <label for="donationFilter"><strong>Filter:</strong></label>
+<select id="donationFilter">
+  <option value="all">All</option>
+  <option value="waiting">Waiting</option>
+  <option value="shown">Shown</option>
+</select>
+
+  <div id="donation-history" style="max-height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; margin-top: 1rem;"></div>
+
   <script src="control.js"></script>
 </body>
 </html>
