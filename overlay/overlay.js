@@ -118,6 +118,23 @@
         container.classList.remove('visible', 'hidden', 'delay-visible');
         void container.offsetWidth;
         container.classList.add('delay-visible');
+        
+const audio = document.getElementById('donation-audio');
+
+if (data.audioUrl && audio) {
+  audio.muted = false;           // ✅ Unmute explicitly
+  audio.volume = 1.0;            // ✅ Max volume
+  audio.src = data.audioUrl;
+
+  audio.play()
+    .then(() => {
+      console.log('[Overlay] ✅ Audio playback started');
+    })
+    .catch(err => {
+      console.warn('[Overlay] ⚠️ Audio play blocked or failed:', err);
+    });
+}
+
 
         setTimeout(() => {
           container.classList.remove('delay-visible');

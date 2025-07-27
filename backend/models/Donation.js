@@ -17,7 +17,11 @@ const donationSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  imageUrl: { // ✅ Added field
+  imageUrl: {
+    type: String,
+    default: ''
+  },
+  audioUrl: { // ✅ NEW FIELD
     type: String,
     default: ''
   },

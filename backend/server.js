@@ -15,9 +15,16 @@ const server = http.createServer(app);
 const io = socketIo(server, { cors: { origin: '*' } });
 app.set('io', io);
 
+// Donation buffer (max 10 per streamer)
+const donationBuffer = {};
+app.set('donationBuffer', donationBuffer);
+
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// ✅ Serve static files like /audio/*.wav from public/
+app.use(express.static(path.join(__dirname, 'public')));
 
 // JWT Auth
 const authMiddleware = require('./middleware/authMiddleware');
@@ -26,26 +33,38 @@ const authMiddleware = require('./middleware/authMiddleware');
 app.use('/api/auth', require('./routes/auth'));
 app.use('/config', require('./routes/config'));
 app.use('/api/streamer', authMiddleware, require('./routes/streamerControl'));
-app.use('/api/donations', (req, res, next) => {
-  req.donationBuffer = donationBuffer;
-  next();
-}, require('./routes/donations'));
+app.use(
+  '/api/donations',
+  (req, res, next) => {
+    req.donationBuffer = donationBuffer;
+    next();
+  },
+  require('./routes/donations')
+);
 
-// Donation buffer (max 10 per streamer)
-const donationBuffer = {};
-app.set('donationBuffer', donationBuffer);
-
-// Static assets
+// Static overlay & control panels
 app.use('/overlay', express.static(path.join(__dirname, '../overlay')));
 app.use('/control', express.static(path.join(__dirname, '../control')));
 
 // HTML routes
-app.get('/', (_, res) => res.sendFile(path.join(__dirname, '../control/login.html')));
-app.get('/login', (_, res) => res.sendFile(path.join(__dirname, '../control/login.html')));
-app.get('/register', (_, res) => res.sendFile(path.join(__dirname, '../control/register.html')));
-app.get('/control', (_, res) => res.sendFile(path.join(__dirname, '../control/control.html')));
-app.get('/overlay', (_, res) => res.sendFile(path.join(__dirname, '../overlay/index.html')));
-app.get('/donate', (_, res) => res.sendFile(path.join(__dirname, '../overlay/DonaterForm.html')));
+app.get('/', (_, res) =>
+  res.sendFile(path.join(__dirname, '../control/login.html'))
+);
+app.get('/login', (_, res) =>
+  res.sendFile(path.join(__dirname, '../control/login.html'))
+);
+app.get('/register', (_, res) =>
+  res.sendFile(path.join(__dirname, '../control/register.html'))
+);
+app.get('/control', (_, res) =>
+  res.sendFile(path.join(__dirname, '../control/control.html'))
+);
+app.get('/overlay', (_, res) =>
+  res.sendFile(path.join(__dirname, '../overlay/index.html'))
+);
+app.get('/donate', (_, res) =>
+  res.sendFile(path.join(__dirname, '../overlay/DonaterForm.html'))
+);
 
 // GIPHY API key for frontend
 app.get('/env-config', (req, res) => {
@@ -77,12 +96,14 @@ io.on('connection', (socket) => {
 
   const buffer = donationBuffer[streamer];
   if (buffer?.length) {
-    buffer.forEach(d => socket.emit('new-donation', d));
+    buffer.forEach((d) => socket.emit('new-donation', d));
   }
 
   // ✅ Forward donation removal to overlays
   socket.on('remove-donation', (donationId) => {
-    console.log(`🧹 Received remove-donation for ${donationId}, forwarding to overlays in room: ${streamer}`);
+    console.log(
+      `🧹 Received remove-donation for ${donationId}, forwarding to overlays in room: ${streamer}`
+    );
     io.to(streamer).emit('remove-donation', donationId);
   });
 

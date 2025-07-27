@@ -23,7 +23,7 @@ if (!streamer) {
   window.location.href = '/login';
 }
 
-const socket = io({ query: { s: streamer } }); // ✅ moved AFTER streamer is declared
+const socket = io({ query: { s: streamer } });
 
 document.getElementById('streamer-display').textContent = `Streamer: ${streamer}`;
 
@@ -40,7 +40,6 @@ const filterSelect = document.getElementById('donationFilter');
 
 let isPaused = false;
 
-// Load streamer config
 fetch(`/api/streamer/${streamer}/config`, {
   headers: { 'Authorization': 'Bearer ' + token }
 })
@@ -60,7 +59,6 @@ fetch(`/api/streamer/${streamer}/config`, {
     window.location.href = '/login';
   });
 
-// OBS + donation link setup
 fetch(`/api/streamer/${streamer}/token`, {
   headers: { 'Authorization': 'Bearer ' + token }
 })
@@ -160,8 +158,13 @@ async function loadDonationHistory() {
       const card = document.createElement('div');
       card.className = 'donation-card';
 
-      const time = new Date(d.timestamp).toLocaleTimeString([], {
-        hour: '2-digit', minute: '2-digit', hour12: true
+      const time = new Date(d.timestamp).toLocaleString([], {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
       });
 
       const info = document.createElement('div');
@@ -239,7 +242,7 @@ async function loadDonationHistory() {
         const res = await fetch(`/api/donations/mark-shown/${id}`, { method: 'POST' });
         const result = await res.json();
         if (result.success) {
-          socket.emit('remove-donation', id); // ✅ tell overlay to remove it
+          socket.emit('remove-donation', id);
           loadDonationHistory();
         } else {
           alert('❌ Failed to mark as shown.');
@@ -253,6 +256,33 @@ async function loadDonationHistory() {
     container.textContent = 'Error loading donation history. Please try again.';
   }
 }
+
+document.getElementById('clearShownBtn')?.addEventListener('click', async () => {
+  if (!confirm('Are you sure you want to delete all shown donations?')) return;
+
+  try {
+    const tokenRes = await fetch(`/api/streamer/${streamer}/token`, {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const tokenData = await tokenRes.json();
+    const overlayToken = tokenData.overlayToken;
+
+    const res = await fetch(`/api/donations/clear-shown/${overlayToken}`, {
+      method: 'DELETE'
+    });
+    const result = await res.json();
+
+    if (result.success) {
+      alert(`✅ Deleted ${result.deletedCount} shown donations.`);
+      loadDonationHistory();
+    } else {
+      alert('❌ Failed to clear shown donations.');
+    }
+  } catch (err) {
+    console.error('[Control] Clear shown error:', err);
+    alert('❌ Error clearing shown donations.');
+  }
+});
 
 window.addEventListener('DOMContentLoaded', () => {
   loadDonationHistory();
