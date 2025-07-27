@@ -19,6 +19,7 @@ router.get('/:streamer/config', authMiddleware, async (req, res) => {
       paused: user.paused,
       defaultImageUrl: user.defaultImageUrl,
       allowGifs: user.allowGifs,
+      allowTTS: user.allowTTS  // ✅ Fixed here
     });
   } catch (err) {
     console.error('[GET CONFIG ERROR]', err);
@@ -43,7 +44,6 @@ router.post('/:streamer/pause', authMiddleware, async (req, res) => {
     );
     if (!user) return res.status(404).json({ error: 'Streamer not found' });
 
-    // ✅ Real-time update for overlays via Socket.IO
     const io = req.app.get('io');
     io.to(streamer).emit('pause-state-changed', { paused: user.paused });
 
@@ -54,10 +54,10 @@ router.post('/:streamer/pause', authMiddleware, async (req, res) => {
   }
 });
 
-// ✅ POST to save image URL and allowGifs
+// ✅ POST to save image URL, allowGifs, allowTTS
 router.post('/:streamer/settings', authMiddleware, async (req, res) => {
   const { streamer } = req.params;
-  const { imageUrl, allowGifs } = req.body;
+  const { imageUrl, allowGifs, allowTTS } = req.body;
 
   if (req.user.username !== streamer) {
     return res.status(403).json({ error: 'Forbidden' });
@@ -69,6 +69,7 @@ router.post('/:streamer/settings', authMiddleware, async (req, res) => {
       {
         defaultImageUrl: imageUrl,
         allowGifs: !!allowGifs,
+        allowTTS: !!allowTTS // ✅ Now saving to DB
       },
       { new: true }
     );

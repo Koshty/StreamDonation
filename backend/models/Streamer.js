@@ -33,6 +33,11 @@ const streamerSchema = new mongoose.Schema({
   paused: { type: Boolean, default: false },
 defaultImageUrl: { type: String, default: '' },
 allowGifs: { type: Boolean, default: true },
+allowTTS: {
+  type: Boolean,
+  default: true
+}
+
 });
 
 module.exports = mongoose.model('Streamer', streamerSchema);

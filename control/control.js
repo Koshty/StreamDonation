@@ -32,6 +32,7 @@ const imageInput = document.getElementById('imageUrl');
 const saveBtn = document.getElementById('saveImage');
 const status = document.getElementById('status');
 const allowGifsCheckbox = document.getElementById('allowGifsToggle');
+const allowTTSCheckbox = document.getElementById('allowTTSToggle');
 const imagePreview = document.getElementById('imagePreview');
 const obsLinkInput = document.getElementById('obsLink');
 const donateLinkInput = document.getElementById('donateLink');
@@ -52,6 +53,7 @@ fetch(`/api/streamer/${streamer}/config`, {
     imageInput.value = data.defaultImageUrl || '';
     imagePreview.src = data.defaultImageUrl || '';
     allowGifsCheckbox.checked = !!data.allowGifs;
+    allowTTSCheckbox.checked = !!data.allowTTS;
     toggleBtn.textContent = isPaused ? 'Resume' : 'Pause';
   })
   .catch(() => {
@@ -107,6 +109,7 @@ toggleBtn.onclick = async () => {
 saveBtn.onclick = async () => {
   const imageUrl = imageInput.value.trim();
   const allowGifs = allowGifsCheckbox.checked;
+  const allowTTS = allowTTSCheckbox.checked;
 
   const res = await fetch(`/api/streamer/${streamer}/settings`, {
     method: 'POST',
@@ -114,7 +117,7 @@ saveBtn.onclick = async () => {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + token
     },
-    body: JSON.stringify({ imageUrl, allowGifs })
+    body: JSON.stringify({ imageUrl, allowGifs, allowTTS })
   });
 
   const data = await res.json();
