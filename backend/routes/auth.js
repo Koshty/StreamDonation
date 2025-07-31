@@ -62,21 +62,21 @@ router.post('/register', async (req, res) => {
 
 // Login existing streamer
 router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
+  const { username, password } = req.body;
 
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required.' });
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required.' });
   }
 
   try {
-    const streamer = await Streamer.findOne({ email });
+    const streamer = await Streamer.findOne({ username });
     if (!streamer) {
-      return res.status(401).json({ error: 'Invalid email or password.' });
+      return res.status(401).json({ error: 'Invalid username or password.' });
     }
 
     const isMatch = await bcrypt.compare(password, streamer.passwordHash);
     if (!isMatch) {
-      return res.status(401).json({ error: 'Invalid email or password.' });
+      return res.status(401).json({ error: 'Invalid username or password.' });
     }
 
     const token = jwt.sign(
@@ -91,5 +91,6 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ error: 'Server error during login.' });
   }
 });
+
 
 module.exports = router;

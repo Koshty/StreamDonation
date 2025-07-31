@@ -32,7 +32,10 @@ const donationSchema = new mongoose.Schema({
   shown: {
     type: Boolean,
     default: false
-  }
+  },
+  paymobOrderId: String,
+paymobTxnId: String,
+isPaymob: { type: Boolean, default: false }
 });
 
 module.exports = mongoose.model('Donation', donationSchema);

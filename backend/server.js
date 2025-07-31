@@ -33,6 +33,8 @@ const authMiddleware = require('./middleware/authMiddleware');
 app.use('/api/auth', require('./routes/auth'));
 app.use('/config', require('./routes/config'));
 app.use('/api/streamer', authMiddleware, require('./routes/streamerControl'));
+
+// 🧾 Regular donation routes
 app.use(
   '/api/donations',
   (req, res, next) => {
@@ -42,11 +44,17 @@ app.use(
   require('./routes/donations')
 );
 
+// 💳 Paymob donation route
+app.use('/api/paymob', require('./routes/paymobDonations'));
+
+// 🛰️ Webhook to handle Paymob payment callback
+app.use('/api/webhook', require('./routes/webhook'));
+
 // Static overlay & control panels
 app.use('/overlay', express.static(path.join(__dirname, '../overlay')));
 app.use('/control', express.static(path.join(__dirname, '../control')));
 
-// HTML routes
+// HTML page routes
 app.get('/', (_, res) =>
   res.sendFile(path.join(__dirname, '../control/login.html'))
 );
@@ -99,11 +107,8 @@ io.on('connection', (socket) => {
     buffer.forEach((d) => socket.emit('new-donation', d));
   }
 
-  // ✅ Forward donation removal to overlays
   socket.on('remove-donation', (donationId) => {
-    console.log(
-      `🧹 Received remove-donation for ${donationId}, forwarding to overlays in room: ${streamer}`
-    );
+    console.log(`🧹 Removing donation ${donationId} in room: ${streamer}`);
     io.to(streamer).emit('remove-donation', donationId);
   });
 
@@ -112,7 +117,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// Start
+// Start server
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);

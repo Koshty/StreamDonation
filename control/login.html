@@ -15,14 +15,14 @@
   <form id="login-form" name="login" autocomplete="on">
     <!-- Prevents Chrome from misfilling wrong fields -->
     <input type="text" name="fake-username" style="display:none;" aria-hidden="true" />
-    
+
     <input
-      type="email"
-      id="email"
-      name="email"
-      placeholder="Email"
+      type="text"
+      id="username"
+      name="username"
+      placeholder="Username"
       required
-      autocomplete="email"
+      autocomplete="username"
     />
     <input
       type="password"
@@ -46,14 +46,14 @@
       e.preventDefault();
       errorMsg.textContent = '';
 
-      const email = document.getElementById('email').value.trim();
+      const username = document.getElementById('username').value.trim();
       const password = document.getElementById('password').value.trim();
 
       try {
         const res = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password })
+          body: JSON.stringify({ username, password })
         });
 
         const data = await res.json();
