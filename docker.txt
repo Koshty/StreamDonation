@@ -4,3 +4,5 @@ python3 TTS/server/server.py --model_name tts_models/multilingual/multi-dataset/
 
 in a seperate terminal
 docker cp "D:\Projects\StreamDonation\egyptian_voice_short.wav" musing_allen:/root/egyptian_voice_short.wav
+
+npx ngrok http 5000
