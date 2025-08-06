@@ -19,7 +19,8 @@ router.get('/:streamer/config', authMiddleware, async (req, res) => {
       paused: user.paused,
       defaultImageUrl: user.defaultImageUrl,
       allowGifs: user.allowGifs,
-      allowTTS: user.allowTTS  // ✅ Fixed here
+      allowTTS: user.allowTTS  ,
+      freeMode: user.freeMode  
     });
   } catch (err) {
     console.error('[GET CONFIG ERROR]', err);
@@ -57,7 +58,7 @@ router.post('/:streamer/pause', authMiddleware, async (req, res) => {
 // ✅ POST to save image URL, allowGifs, allowTTS
 router.post('/:streamer/settings', authMiddleware, async (req, res) => {
   const { streamer } = req.params;
-  const { imageUrl, allowGifs, allowTTS } = req.body;
+  const { imageUrl, allowGifs, allowTTS,freeMode } = req.body;
 
   if (req.user.username !== streamer) {
     return res.status(403).json({ error: 'Forbidden' });
@@ -69,7 +70,8 @@ router.post('/:streamer/settings', authMiddleware, async (req, res) => {
       {
         defaultImageUrl: imageUrl,
         allowGifs: !!allowGifs,
-        allowTTS: !!allowTTS // ✅ Now saving to DB
+        allowTTS: !!allowTTS ,
+        freeMode: !!freeMode 
       },
       { new: true }
     );

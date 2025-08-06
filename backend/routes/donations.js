@@ -4,39 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const Streamer = require('../models/Streamer');
 const Donation = require('../models/Donation');
-const leoProfanity = require('leo-profanity');
 const generateTTS = require('../Utils/generateTTS');
-
-leoProfanity.loadDictionary();
-try {
-  const arabicWords = JSON.parse(
-    fs.readFileSync(path.join(__dirname, '../Utils/arabic.json'), 'utf-8')
-  );
-  leoProfanity.add(arabicWords.words);
-} catch (err) {
-  console.warn('⚠️ Arabic wordlist not loaded:', err.message);
-}
-leoProfanity.remove(['ass', 'bitch', 'sex', 'sexy']);
-
-function normalizeProfanityInput(text) {
-  return text
-    .replace(/[\u064B-\u0652]/g, '')
-    .replace(/ـ+/g, '')
-    .replace(/\s+/g, '')
-    .replace(/[^\u0621-\u064Aa-zA-Z]/g, '')
-    .replace(/(.)\1{2,}/g, '$1')
-    .normalize('NFC');
-}
-
-function getMatchedProfanities(text) {
-  const badWords = leoProfanity.list();
-  const normalizedText = normalizeProfanityInput(text);
-  return badWords.filter(bad => {
-    const normalizedBad = normalizeProfanityInput(bad);
-    const pattern = new RegExp(`\\b${normalizedBad}\\b`, 'iu');
-    return pattern.test(normalizedText);
-  });
-}
+const { hasProfanity, getMatchedProfanities, normalize } = require('../Utils/profanity');
 
 const donationQueue = {};
 const lastShownTimestamps = {};
@@ -56,16 +25,24 @@ function addToQueue(streamer, donation) {
   if (donationQueue[streamer].length > 10) donationQueue[streamer].shift();
 }
 
-// ✅ POST /api/donations/test
 router.post('/test', async (req, res) => {
   const io = req.app.get('io');
-  const { username = 'Anonymous', message = '', imageUrl, streamer = 'default' } = req.body;
+  let { username = '', message = '', imageUrl, streamer = 'default' } = req.body;
 
-  const cleanUsername = normalizeProfanityInput(username);
-  const cleanMessage = normalizeProfanityInput(message);
+  username = username.trim();
+  message = message.trim();
 
-  const badUsernameWords = getMatchedProfanities(cleanUsername);
-  const badMessageWords = getMatchedProfanities(cleanMessage);
+  if (!message) {
+    return res.status(400).json({
+      success: false,
+      error: '❌ You must provide a message in free mode.'
+    });
+  }
+
+  if (!username) username = 'Anonymous';
+
+  const badUsernameWords = getMatchedProfanities(normalize(username));
+  const badMessageWords = getMatchedProfanities(normalize(message));
 
   if (badUsernameWords.length || badMessageWords.length) {
     const allBadWords = [...badUsernameWords, ...badMessageWords];
@@ -102,7 +79,7 @@ router.post('/test', async (req, res) => {
     await newDonation.save();
 
     let audioUrl = null;
-    if (user.allowTTS) {
+    if (user.allowTTS && message) {
       try {
         audioUrl = await generateTTS({ message, donationId: newDonation._id });
         if (audioUrl) {
@@ -112,8 +89,6 @@ router.post('/test', async (req, res) => {
       } catch (err) {
         console.warn('🛑 TTS generation failed:', err.message);
       }
-    } else {
-      console.log('🔇 TTS disabled for streamer. Skipping audio generation.');
     }
 
     const donation = {
@@ -135,14 +110,19 @@ router.post('/test', async (req, res) => {
       emitted: donation,
       message: user.paused
         ? '✅ Message sent! (Will appear after stream resumes)'
-        : '✅ Message sent!',
+        : '✅ Message sent!'
     });
-
   } catch (err) {
     console.error('[DONATION POST ERROR]', err);
     return res.status(500).json({ success: false, error: 'Server error' });
   }
 });
+
+// ... (all other endpoints unchanged)
+
+module.exports = router;
+
+
 
 // ✅ GET /api/donations/replay/:streamer
 router.get('/replay/:streamer', (req, res) => {

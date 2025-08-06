@@ -1,0 +1,6 @@
+docker run -it -p 5002:5002 -v D:\Projects\StreamDonation:/root/shared --entrypoint /bin/bash -e COQUI_TOS_AGREED=1 ghcr.io/idiap/coqui-tts-cpu
+
+python3 TTS/server/server.py --model_name tts_models/multilingual/multi-dataset/xtts_v2 --language ar 
+
+in a seperate terminal
+docker cp "D:\Projects\StreamDonation\egyptian_voice_short.wav" musing_allen:/root/egyptian_voice_short.wav

@@ -16,10 +16,15 @@
     <h2>Send a Donation Message</h2>
     <form id="donation-form">
       <label for="username">Username</label>
-      <input type="text" id="username" placeholder="Your name" maxlength="25" />
+      <input type="text" id="username" placeholder="Anonymous" maxlength="25" />
 
       <label for="message">Message</label>
       <textarea id="message" placeholder="Your message" maxlength="500"></textarea>
+
+      <div id="amount-section">
+        <label for="amount">Amount (EGP)</label>
+        <input type="number" id="amount" placeholder="e.g. 10" min="1" step="0.01" />
+      </div>
 
       <div id="gif-section">
         <label for="giphySearch">Search GIFs</label>
@@ -42,6 +47,7 @@
     let GIPHY_API_KEY = '';
     let allowGifs = true;
     let defaultImageUrl = '';
+    let freeMode = true;
 
     const donationForm = document.getElementById('donation-form');
     const statusText = document.getElementById('status');
@@ -50,6 +56,8 @@
     const clearGifBtn = document.getElementById('clearGifBtn');
     const giphySearchInput = document.getElementById('giphySearch');
     const giphyResults = document.getElementById('giphyResults');
+    const amountSection = document.getElementById('amount-section');
+    const amountInput = document.getElementById('amount');
 
     if (!username) {
       statusText.textContent = '❌ Invalid link. Streamer missing.';
@@ -69,13 +77,13 @@
           ]);
         })
         .then(([config, env]) => {
+          console.log('CONFIG:', config); // Add this line
           GIPHY_API_KEY = env.giphyKey;
           allowGifs = config.allowGifs;
           defaultImageUrl = config.defaultImageUrl;
-
-          if (!allowGifs) {
-            gifSection.style.display = 'none';
-          }
+          freeMode = config.freeMode === true;
+          if (!allowGifs) gifSection.style.display = 'none';
+          amountSection.style.display = freeMode ? 'none' : 'block';
         })
         .catch(err => {
           console.error('[Donation] Streamer resolution failed:', err);
@@ -128,18 +136,59 @@
         return;
       }
 
-      const sender = document.getElementById('username').value.slice(0, 25);
-      const message = document.getElementById('message').value.slice(0, 360);
+      const sender = document.getElementById('username').value.trim().slice(0, 25);
+      const message = document.getElementById('message').value.trim().slice(0, 360);
       let imageUrl = imageInput.value.trim();
+      let amount = 0;
 
       if (!imageUrl && defaultImageUrl) {
         imageUrl = defaultImageUrl;
       }
 
+      if (!freeMode) {
+        amount = parseFloat(amountInput.value);
+        if (isNaN(amount) || amount < 1) {
+          statusText.textContent = '❌ Please enter a valid amount.';
+          return;
+        }
+
+        const res = await fetch('/api/paymob/start', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            amount,
+            username: sender || 'Anonymous',
+            message,
+            imageUrl,
+            streamer: username
+          })
+        });
+
+        const data = await res.json();
+        if (data.success && data.url) {
+          window.location.href = data.url;
+        } else {
+          const errMsg = data.error || 'Failed to start payment.';
+          statusText.textContent = '❌ ' + errMsg;        
+        }
+        return;
+      }
+
+      // Free mode validation: don't allow empty username + message
+      if (!sender && !message) {
+        statusText.textContent = '❌ Please enter a message.';
+        return;
+      }
+
       const res = await fetch('/api/donations/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: sender, message, imageUrl, streamer: username })
+        body: JSON.stringify({
+          username: sender || 'Anonymous',
+          message,
+          imageUrl,
+          streamer: username
+        })
       });
 
       const data = await res.json();

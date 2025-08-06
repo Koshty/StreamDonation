@@ -7,7 +7,7 @@ const donationSchema = new mongoose.Schema({
   },
   username: {
     type: String,
-    required: true
+    required: false
   },
   amount: {
     type: Number,
@@ -15,13 +15,13 @@ const donationSchema = new mongoose.Schema({
   },
   message: {
     type: String,
-    required: true
+    required: false
   },
   imageUrl: {
     type: String,
     default: ''
   },
-  audioUrl: { // ✅ NEW FIELD
+  audioUrl: { 
     type: String,
     default: ''
   },
@@ -35,7 +35,11 @@ const donationSchema = new mongoose.Schema({
   },
   paymobOrderId: String,
 paymobTxnId: String,
-isPaymob: { type: Boolean, default: false }
+isPaymob: { type: Boolean, default: false },
+  pending: {
+    type: Boolean,
+    default: false
+  },
 });
 
 module.exports = mongoose.model('Donation', donationSchema);

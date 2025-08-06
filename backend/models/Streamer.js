@@ -36,7 +36,12 @@ allowGifs: { type: Boolean, default: true },
 allowTTS: {
   type: Boolean,
   default: true
+},
+freeMode: {
+  type: Boolean,
+  default: true
 }
+
 
 });
 

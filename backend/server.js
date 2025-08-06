@@ -19,6 +19,10 @@ app.set('io', io);
 const donationBuffer = {};
 app.set('donationBuffer', donationBuffer);
 
+// ✅ Add toQueue handler for webhook.js
+const { addToQueue } = require('./routes/donations');
+app.set('addToQueue', addToQueue);
+
 // Middleware
 app.use(cors());
 app.use(express.json());
