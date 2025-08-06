@@ -6,16 +6,14 @@ const donationSchema = new mongoose.Schema({
     required: true
   },
   username: {
-    type: String,
-    required: false
+    type: String
   },
   amount: {
     type: Number,
     required: true
   },
   message: {
-    type: String,
-    required: false
+    type: String
   },
   imageUrl: {
     type: String,
@@ -33,9 +31,18 @@ const donationSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  paymobOrderId: String,
-paymobTxnId: String,
-isPaymob: { type: Boolean, default: false },
+  paymobOrderId: {
+    type: String
+  },
+  paymobTxnId: {
+    type: String,
+    unique: true,
+    sparse: true  // only enforces uniqueness when value is present
+  },
+  isPaymob: {
+    type: Boolean,
+    default: false
+  },
   pending: {
     type: Boolean,
     default: false

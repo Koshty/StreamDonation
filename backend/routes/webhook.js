@@ -57,6 +57,13 @@ router.post('/paymob/webhook', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Payment not successful' });
   }
 
+  // Check if this transaction already exists
+const exists = await Donation.findOne({ paymobTxnId: id });
+if (exists) {
+  console.log('⚠️ Duplicate transaction detected. Skipping.');
+  return res.sendStatus(200); // ✅ Still acknowledge it
+}
+
   try {
     console.log('✅ Payment marked as successful');
 
