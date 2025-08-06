@@ -1,6 +1,5 @@
 const express = require('express');
 const router = express.Router();
-const crypto = require('crypto');
 const Donation = require('../models/Donation');
 const Streamer = require('../models/Streamer');
 const generateTTS = require('../Utils/generateTTS');
@@ -57,12 +56,12 @@ router.post('/paymob/webhook', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Payment not successful' });
   }
 
-  // Check if this transaction already exists
-const exists = await Donation.findOne({ paymobTxnId: id });
-if (exists) {
-  console.log('⚠️ Duplicate transaction detected. Skipping.');
-  return res.sendStatus(200); // ✅ Still acknowledge it
-}
+  // Check if already exists
+  const exists = await Donation.findOne({ paymobTxnId: id });
+  if (exists) {
+    console.log('⚠️ Duplicate transaction detected. Skipping.');
+    return res.sendStatus(200);
+  }
 
   try {
     console.log('✅ Payment marked as successful');
@@ -106,9 +105,6 @@ if (exists) {
 
     console.log(`✅ Streamer "${streamerUsername}" found in DB`);
 
-    const io = req.app.get('io');
-    const buffer = req.app.get('donationBuffer');
-    const addToQueue = req.app.get('addToQueue');
     const timestamp = Date.now();
 
     if (!imageUrl) {
@@ -123,56 +119,14 @@ if (exists) {
       amount,
       timestamp,
       shown: false,
-      pending: false,
+      pending: true, // ⛔ Only allow after /donate confirms HMAC
       isPaymob: true,
       paymobTxnId: id,
       paymobOrderId: order?.id || order
     });
 
     await newDonation.save();
-    console.log('💾 Donation saved to MongoDB:', newDonation._id);
-
-    let audioUrl = '';
-    if (streamer.allowTTS && message) {
-      try {
-        audioUrl = await generateTTS({ message, donationId: newDonation._id });
-        if (audioUrl) {
-          newDonation.audioUrl = audioUrl;
-          await newDonation.save();
-          console.log('🔊 TTS audio generated and saved');
-        }
-      } catch (err) {
-        console.warn('❌ TTS generation failed:', err.message);
-      }
-    }
-
-    const donation = {
-      _id: newDonation._id,
-      username,
-      message,
-      imageUrl,
-      delayed: streamer.paused,
-      timestamp,
-      ...(audioUrl ? { audioUrl } : {})
-    };
-
-    if (!buffer[streamer.username]) buffer[streamer.username] = [];
-    buffer[streamer.username].push(donation);
-    if (buffer[streamer.username].length > 10) buffer[streamer.username].shift();
-
-    console.log('🧠 Donation added to buffer');
-
-    if (typeof addToQueue === 'function') {
-      addToQueue(streamer.username, donation);
-      console.log('📝 Donation added to display queue');
-    }
-
-    if (!streamer.paused) {
-      io.to(streamer.username).emit('new-donation', donation);
-      console.log('📢 Donation emitted via socket.io');
-    } else {
-      console.log('⏸️ Donation queued (stream is paused)');
-    }
+    console.log('💾 Donation saved as pending:', newDonation._id);
 
     res.sendStatus(200);
   } catch (err) {
