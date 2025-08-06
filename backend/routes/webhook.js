@@ -161,7 +161,7 @@ router.post('/paymob/webhook', async (req, res) => {
     }
 
     if (!streamer.paused) {
-      io.to(streamer.overlayToken).emit('new-donation', donation);
+      io.to(streamer.username).emit('new-donation', donation);
       console.log('📢 Donation emitted via socket.io');
     } else {
       console.log('⏸️ Donation queued (stream is paused)');
