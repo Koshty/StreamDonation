@@ -92,7 +92,20 @@
 
         console.log('[Overlay] ✅ Displaying donation:', data);
 
-        username.textContent = (data.username || 'Anonymous') + ' says';
+        // ✨ GOLD FRAME TOGGLE FOR PAID DONATIONS
+        container.classList.toggle('paid', !!data.isPaymob);
+
+        // ✨ HEADLINE TEXT: "user donated [amount]" IF PAID, ELSE "user says"
+        if (data.isPaymob) {
+          const amt = (typeof data.amount === 'number' && !Number.isNaN(data.amount))
+            ? data.amount
+            : 0;
+          username.textContent = `${data.username || 'Anonymous'} donated ${amt} EGP`;
+        } else {
+          username.textContent = `${data.username || 'Anonymous'} says`;
+        }
+
+        // message stays as-is
         message.textContent = data.message || '';
 
         autoResizeText(username, 42, 28, 18);
@@ -118,23 +131,21 @@
         container.classList.remove('visible', 'hidden', 'delay-visible');
         void container.offsetWidth;
         container.classList.add('delay-visible');
-        
-const audio = document.getElementById('donation-audio');
 
-if (data.audioUrl && audio) {
-  audio.muted = false;           // ✅ Unmute explicitly
-  audio.volume = 1.0;            // ✅ Max volume
-  audio.src = data.audioUrl;
+        const audio = document.getElementById('donation-audio');
+        if (data.audioUrl && audio) {
+          audio.muted = false;           // ✅ Unmute explicitly
+          audio.volume = 1.0;            // ✅ Max volume
+          audio.src = data.audioUrl;
 
-  audio.play()
-    .then(() => {
-      console.log('[Overlay] ✅ Audio playback started');
-    })
-    .catch(err => {
-      console.warn('[Overlay] ⚠️ Audio play blocked or failed:', err);
-    });
-}
-
+          audio.play()
+            .then(() => {
+              console.log('[Overlay] ✅ Audio playback started');
+            })
+            .catch(err => {
+              console.warn('[Overlay] ⚠️ Audio play blocked or failed:', err);
+            });
+        }
 
         setTimeout(() => {
           container.classList.remove('delay-visible');

@@ -102,7 +102,6 @@ router.post('/test', async (req, res) => {
     };
 
     addToQueue(streamer, donation);
-    if (!user.paused) lastShownTimestamps[streamer] = timestamp;
 
     io.to(streamer).emit('new-donation', donation);
     return res.status(200).json({
@@ -123,14 +122,30 @@ router.post('/test', async (req, res) => {
 module.exports = router;
 
 
-
 // ✅ GET /api/donations/replay/:streamer
-router.get('/replay/:streamer', (req, res) => {
-  const streamer = req.params.streamer || 'default';
-  const since = lastShownTimestamps[streamer] || 0;
-  const list = (donationQueue[streamer] || []).filter(d => d.timestamp > since && !d.shown);
-  res.json({ success: true, queue: list });
+router.get('/replay/:streamer', async (req, res) => {
+  try {
+    const streamerUsername = req.params.streamer;
+    const streamer = await Streamer.findOne({ username: streamerUsername });
+    if (!streamer) {
+      return res.status(404).json({ success: false, queue: [], error: 'Streamer not found' });
+    }
+
+    // Pull unseen donations from DB (oldest first so they play in order)
+    const queue = await Donation.find({
+      streamerToken: streamer.overlayToken,
+      shown: false
+    })
+    .sort({ timestamp: 1 })
+    .limit(50); // or whatever buffer size you like
+
+    return res.json({ success: true, queue });
+  } catch (err) {
+    console.error('[Replay Error]', err);
+    return res.status(500).json({ success: false, queue: [], error: 'Server error' });
+  }
 });
+
 
 // ✅ GET /api/donations/resolve/:username
 router.get('/resolve/:username', async (req, res) => {
@@ -149,7 +164,16 @@ router.get('/resolve/:username', async (req, res) => {
 router.get('/history/:token', async (req, res) => {
   try {
     const { token } = req.params;
-    const donations = await Donation.find({ streamerToken: token }).sort({ timestamp: -1 }).limit(50);
+    const { paid } = req.query;
+
+    const query = { streamerToken: token };
+    if (paid === 'true') query.isPaymob = true;
+    if (paid === 'false') query.isPaymob = false;
+
+    const donations = await Donation.find(query)
+      .sort({ timestamp: -1 })
+      .limit(50);
+
     res.json({ success: true, donations });
   } catch (err) {
     console.error('[Donation History Error]', err);
@@ -229,5 +253,6 @@ router.delete('/clear-shown/:token', async (req, res) => {
     res.status(500).json({ success: false, error: 'Server error' });
   }
 });
+
 
 module.exports = router;

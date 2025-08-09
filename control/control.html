@@ -105,6 +105,12 @@
   gap: 10px;
   margin-top: 1rem;
 }
+
+.donation-card.paid {
+  border: 2px solid gold;
+  box-shadow: 0 0 10px gold;
+}
+
 </style>
 
 </head>
@@ -156,6 +162,14 @@
     <option value="waiting">Waiting</option>
     <option value="shown">Shown</option>
   </select>
+
+    <label for="paidFilter">Type:</label>
+  <select id="paidFilter">
+    <option value="all">All</option>
+    <option value="paid">Paid</option>
+    <option value="free">Free</option>
+  </select>
+
   <button id="clearShownBtn">🗑️ Clear All Shown</button>
 </div>
 

@@ -138,11 +138,18 @@ async function loadDonationHistory() {
     const tokenData = await tokenRes.json();
     const overlayToken = tokenData.overlayToken;
 
-    const res = await fetch(`/api/donations/history/${overlayToken}`);
+    const filter = document.getElementById('donationFilter')?.value || 'all';
+    const paidFilter = document.getElementById('paidFilter')?.value || 'all';
+
+    // Build query string for paid
+    const qs = new URLSearchParams();
+    if (paidFilter === 'paid') qs.set('paid', 'true');
+    if (paidFilter === 'free') qs.set('paid', 'false');
+
+    const res = await fetch(`/api/donations/history/${overlayToken}` + (qs.toString() ? `?${qs}` : ''));
     const data = await res.json();
 
     const container = document.getElementById('donation-history');
-    const filter = filterSelect?.value || 'all';
     container.innerHTML = '';
 
     if (!data.success || !Array.isArray(data.donations)) {
@@ -162,6 +169,7 @@ async function loadDonationHistory() {
     for (const d of donations) {
       const card = document.createElement('div');
       card.className = 'donation-card';
+      if (d.isPaymob) card.classList.add('paid'); // highlight paid
 
       const time = new Date(d.timestamp).toLocaleString([], {
         year: 'numeric',

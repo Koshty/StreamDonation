@@ -147,6 +147,8 @@ router.get('/donate', async (req, res) => {
     imageUrl: donation.imageUrl || streamer.defaultImageUrl,
     delayed: streamer.paused,
     timestamp: donation.timestamp,
+    amount: donation.amount,   
+    isPaymob: true,           
     ...(donation.audioUrl ? { audioUrl: donation.audioUrl } : {})
   };
 
