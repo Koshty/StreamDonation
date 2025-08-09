@@ -3,6 +3,7 @@ require('dotenv').config();
 
 const BASE_URL = 'https://accept.paymob.com/api';
 
+// === Classic API helpers (existing flow) ===
 async function getAuthToken() {
   const res = await axios.post(`${BASE_URL}/auth/tokens`, {
     api_key: process.env.PAYMOB_API_KEY,
@@ -65,8 +66,37 @@ async function generatePaymentKey(token, orderId, amountCents, donorName, billin
   return res.data.token;
 }
 
+// === Intention API helper (Unified Checkout) ===
+// paymentMethods: array of integration IDs (e.g., [CARD_ID, WALLET_ID])
+async function createIntention({
+  amount_cents,
+  currency = 'EGP',
+  payment_methods,
+  billing_data = {},
+  items = [{ name: 'Donation', amount: amount_cents, quantity: 1 }],
+  customer = {},
+  extras = {}
+}) {
+  // Intention API lives under /v1, but we can still use BASE_URL for consistency
+  const url = `${BASE_URL.replace('/api', '')}/v1/intention/`; 
+  const res = await axios.post(url, {
+    amount: amount_cents,
+    currency,
+    payment_methods,
+    items,
+    billing_data,
+    customer,
+    extras
+  }, {
+    headers: { Authorization: `Token ${process.env.PAYMOB_SECRET_KEY}` }
+  });
+
+  return res.data; // { id, status, client_secret, payment_methods, ... }
+}
+
 module.exports = {
   getAuthToken,
   createOrder,
-  generatePaymentKey
+  generatePaymentKey,
+  createIntention
 };

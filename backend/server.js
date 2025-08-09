@@ -51,6 +51,9 @@ app.use(
 // 💳 Paymob donation route
 app.use('/api/paymob', require('./routes/paymobDonations'));
 
+// 🧭 Paymob Intention (Unified Checkout) flow
+app.use('/api/paymob', require('./routes/paymobIntention'));
+
 // 🛰️ Webhook to handle Paymob payment callback
 app.use('/api/webhook', require('./routes/webhook'));
 

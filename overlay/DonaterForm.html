@@ -77,7 +77,7 @@
           ]);
         })
         .then(([config, env]) => {
-          console.log('CONFIG:', config); // Add this line
+          console.log('CONFIG:', config);
           GIPHY_API_KEY = env.giphyKey;
           allowGifs = config.allowGifs;
           defaultImageUrl = config.defaultImageUrl;
@@ -152,7 +152,8 @@
           return;
         }
 
-        const res = await fetch('/api/paymob/start', {
+        // 🚀 Use Intention API instead of old card-only start
+        const res = await fetch('/api/paymob/intention/start', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -166,7 +167,7 @@
 
         const data = await res.json();
         if (data.success && data.url) {
-          window.location.href = data.url;
+          window.location.href = data.url; // Unified Checkout (Card + Wallet)
         } else {
           const errMsg = data.error || 'Failed to start payment.';
           statusText.textContent = '❌ ' + errMsg;        
