@@ -44,7 +44,7 @@ async function generatePaymentKey(token, orderId, amountCents, donorName, billin
     expiration: 3600,
     order_id: orderId,
     currency: 'EGP',
-    integration_id: process.env.PAYMOB_INTEGRATION_ID,
+    integration_id: process.env.PAYMOB_CARD_INTEGRATION_ID,
     billing_data: {
       first_name: donorName || 'Anonymous',
       last_name: billingData?.last_name || '.',
