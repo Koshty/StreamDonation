@@ -5,6 +5,7 @@ const { getAuthToken, createOrder, generatePaymentKey } = require('../paymob');
 const Streamer = require('../models/Streamer');
 const Donation = require('../models/Donation');
 const { getMatchedProfanities, normalize } = require('../Utils/profanity');
+const path = require('path');
 
 // ✅ POST /api/paymob/start — Start a Paymob donation
 router.post('/start', async (req, res) => {
@@ -168,7 +169,9 @@ router.get('/donate', async (req, res) => {
     console.log('⏸️ Stream is paused, donation buffered');
   }
 
-  res.send('✅ Thanks for your donation!');
+  res.sendFile(path.join(__dirname, '../public/thankyou.html'));
 });
+  
+
 
 module.exports = router;
