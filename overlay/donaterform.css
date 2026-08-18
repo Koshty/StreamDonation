@@ -41,6 +41,23 @@ input::placeholder, textarea::placeholder {
   color: #aaa;
 }
 
+textarea#message {
+  resize: none;
+  overflow-y: auto;
+  max-height: 200px;
+  min-height: 80px;
+}
+
+.form-actions-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.form-actions-row button {
+  margin-bottom: 0;
+}
+
 button {
   background: #007bff;
   color: white;

@@ -27,7 +27,7 @@
       <input type="text" id="username" placeholder="Anonymous" maxlength="25" />
 
       <label for="message">Message</label>
-      <textarea id="message" placeholder="Your message" maxlength="500"></textarea>
+      <textarea id="message" placeholder="Your message" maxlength="360"></textarea>
 
       <div id="amount-section">
         <label for="amount">Amount (EGP)</label>
@@ -38,11 +38,13 @@
         <label for="giphySearch">Search GIFs</label>
         <input type="text" id="giphySearch" placeholder="Type to search GIFs" />
         <div id="giphyResults"></div>
-        <button id="clearGifBtn" type="button" style="display:none; margin-top: 10px;">❌ Clear GIF</button>
       </div>
 
       <input type="hidden" id="imageUrl" />
-      <button type="submit">Send</button>
+      <div class="form-actions-row">
+        <button type="submit">Send</button>
+        <button id="clearGifBtn" type="button" style="display:none;">❌ Clear GIF</button>
+      </div>
     </form>
     <p id="status"></p>
 
@@ -86,6 +88,13 @@
     const giphyResults = document.getElementById('giphyResults');
     const amountSection = document.getElementById('amount-section');
     const amountInput = document.getElementById('amount');
+    const messageInput = document.getElementById('message');
+
+    function autoResizeMessage() {
+      messageInput.style.height = 'auto';
+      messageInput.style.height = messageInput.scrollHeight + 'px';
+    }
+    messageInput.addEventListener('input', autoResizeMessage);
 
     if (!username) {
       statusText.textContent = '❌ Invalid link. Streamer missing.';

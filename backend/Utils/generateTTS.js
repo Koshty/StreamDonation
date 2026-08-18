@@ -3,8 +3,8 @@ const fs = require("fs");
 const path = require("path");
 const { MsEdgeTTS, OUTPUT_FORMAT } = require("msedge-tts");
 
-const ARABIC_VOICE = process.env.TTS_ARABIC_VOICE || "ar-EG-SalmaNeural";
-const ENGLISH_VOICE = process.env.TTS_ENGLISH_VOICE || "en-US-AriaNeural";
+const ARABIC_VOICE = process.env.TTS_ARABIC_VOICE || "ar-EG-ShakirNeural";
+const ENGLISH_VOICE = process.env.TTS_ENGLISH_VOICE || "en-US-AndrewMultilingualNeural";
 
 function detectLanguage(text) {
   const arabicChars = (text.match(/[؀-ۿ]/g) || []).length;
