@@ -9,6 +9,14 @@
     #giphyResults img.selected {
       outline: 3px solid #00ffcc;
     }
+    .copy-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 0.25rem;
+    }
+    .copy-row input {
+      flex: 1;
+    }
   </style>
 </head>
 <body>
@@ -37,6 +45,26 @@
       <button type="submit">Send</button>
     </form>
     <p id="status"></p>
+
+    <div id="instapay-panel" style="display:none;">
+      <h3>Send your InstaPay transfer</h3>
+      <p>Open your banking app and send an InstaPay transfer for <strong>exactly</strong> the amount below — don't round it, that's how we match your donation.</p>
+
+      <label>Send exactly</label>
+      <div class="copy-row">
+        <input type="text" id="instapayAmount" readonly />
+        <button type="button" id="copyAmountBtn">📋 Copy</button>
+      </div>
+
+      <label>To InstaPay ID / Mobile Number</label>
+      <div class="copy-row">
+        <input type="text" id="instapayIdField" readonly />
+        <button type="button" id="copyIdBtn">📋 Copy</button>
+      </div>
+
+      <p id="instapayStatusText">⏳ Waiting for your payment to be confirmed...</p>
+      <button type="button" id="instapayRetryBtn" style="display:none;">🔄 Try Again</button>
+    </div>
   </div>
 
   <script>
@@ -152,7 +180,7 @@
           return;
         }
 
-        const res = await fetch('/api/paymob/start', {
+        const res = await fetch('/api/instapay/start', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -165,11 +193,10 @@
         });
 
         const data = await res.json();
-        if (data.success && data.url) {
-          window.location.href = data.url;
+        if (data.success) {
+          showInstapayPanel(data);
         } else {
-          const errMsg = data.error || 'Failed to start payment.';
-          statusText.textContent = '❌ ' + errMsg;        
+          statusText.textContent = '❌ ' + (data.error || 'Failed to start payment.');
         }
         return;
       }
@@ -194,6 +221,61 @@
       const data = await res.json();
       statusText.textContent =
         data.success ? (data.message || '✅ Message sent!') : '❌ ' + (data.error || 'Something went wrong.');
+    });
+
+    const instapayPanel = document.getElementById('instapay-panel');
+    const instapayAmountField = document.getElementById('instapayAmount');
+    const instapayIdField = document.getElementById('instapayIdField');
+    const instapayStatusText = document.getElementById('instapayStatusText');
+    const instapayRetryBtn = document.getElementById('instapayRetryBtn');
+    let pollTimer = null;
+
+    function copyField(fieldId) {
+      const input = document.getElementById(fieldId);
+      navigator.clipboard.writeText(input.value).catch(() => {});
+    }
+    document.getElementById('copyAmountBtn').addEventListener('click', () => copyField('instapayAmount'));
+    document.getElementById('copyIdBtn').addEventListener('click', () => copyField('instapayIdField'));
+
+    function showInstapayPanel(data) {
+      donationForm.style.display = 'none';
+      instapayPanel.style.display = 'block';
+      instapayRetryBtn.style.display = 'none';
+      instapayAmountField.value = `${data.reservedAmount} EGP`;
+      instapayIdField.value = data.instapayId;
+      instapayStatusText.textContent = '⏳ Waiting for your payment to be confirmed...';
+
+      const expiresAt = new Date(data.expiresAt).getTime();
+      pollTimer = setInterval(async () => {
+        if (Date.now() > expiresAt) {
+          stopPollingAsExpired();
+          return;
+        }
+        try {
+          const res = await fetch(`/api/instapay/status/${data.donationId}`);
+          const statusData = await res.json();
+          if (statusData.success && statusData.status === 'paid') {
+            clearInterval(pollTimer);
+            instapayStatusText.textContent = '✅ Thank you! Your donation is on its way to the stream.';
+          } else if (statusData.success && statusData.status === 'expired') {
+            stopPollingAsExpired();
+          }
+        } catch (err) {
+          console.error('[InstaPay] Status poll failed:', err);
+        }
+      }, 4000);
+    }
+
+    function stopPollingAsExpired() {
+      clearInterval(pollTimer);
+      instapayStatusText.textContent = '⌛ This reservation expired before we saw your payment.';
+      instapayRetryBtn.style.display = 'inline-block';
+    }
+
+    instapayRetryBtn.addEventListener('click', () => {
+      instapayPanel.style.display = 'none';
+      donationForm.style.display = 'block';
+      statusText.textContent = '';
     });
   </script>
 </body>

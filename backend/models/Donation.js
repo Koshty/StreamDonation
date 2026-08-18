@@ -19,7 +19,7 @@ const donationSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
-  audioUrl: { 
+  audioUrl: {
     type: String,
     default: ''
   },
@@ -31,15 +31,7 @@ const donationSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  paymobOrderId: {
-    type: String
-  },
-  paymobTxnId: {
-    type: String,
-    unique: true,
-    sparse: true  // only enforces uniqueness when value is present
-  },
-  isPaymob: {
+  isPaid: {
     type: Boolean,
     default: false
   },
@@ -47,6 +39,46 @@ const donationSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+
+  // InstaPay fields (only populated when paymentMethod === 'instapay')
+  paymentMethod: {
+    type: String,
+    enum: ['free', 'instapay'],
+    default: 'free'
+  },
+  requestedAmount: {
+    type: Number
+  },
+  reservedAmount: {
+    type: Number
+  },
+  instapayStatus: {
+    type: String,
+    enum: ['reserved', 'paid', 'expired', 'cancelled']
+  },
+  reservedAt: {
+    type: Date
+  },
+  expiresAt: {
+    type: Date
+  },
+  matchedAt: {
+    type: Date
+  },
+  matchedVia: {
+    type: String,
+    enum: ['sms', 'manual']
+  },
+  smsRawText: {
+    type: String
+  },
 });
+
+// Only currently-reserved donations need a unique reservedAmount — once
+// paid/expired/cancelled the amount is free to be reused by a new reservation.
+donationSchema.index(
+  { reservedAmount: 1 },
+  { unique: true, partialFilterExpression: { instapayStatus: 'reserved' } }
+);
 
 module.exports = mongoose.model('Donation', donationSchema);

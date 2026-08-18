@@ -111,6 +111,17 @@
   box-shadow: 0 0 10px gold;
 }
 
+#instapay-pending {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 0.5rem;
+}
+
+.donation-card.pending-instapay {
+  border: 2px solid orange;
+}
+
 </style>
 
 </head>
@@ -152,6 +163,9 @@
   Free Mode (No Payment Required)
 </label>
 
+  <label for="instapayId">InstaPay ID / Mobile Number</label>
+  <input type="text" id="instapayId" placeholder="e.g. 01001234567 or yourname@instapay" />
+
   <button id="saveImage">Save</button>
   <p id="status"></p>
 
@@ -175,6 +189,10 @@
 
 
   <div id="donation-history"> </div>
+
+  <h3>⏳ Pending InstaPay Donations</h3>
+  <div id="instapay-pending"></div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="control.js"></script>
 </body>

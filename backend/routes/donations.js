@@ -117,11 +117,6 @@ router.post('/test', async (req, res) => {
   }
 });
 
-// ... (all other endpoints unchanged)
-
-module.exports = router;
-
-
 // ✅ GET /api/donations/replay/:streamer
 router.get('/replay/:streamer', async (req, res) => {
   try {
@@ -167,8 +162,8 @@ router.get('/history/:token', async (req, res) => {
     const { paid } = req.query;
 
     const query = { streamerToken: token };
-    if (paid === 'true') query.isPaymob = true;
-    if (paid === 'false') query.isPaymob = false;
+    if (paid === 'true') query.isPaid = true;
+    if (paid === 'false') query.isPaid = false;
 
     const donations = await Donation.find(query)
       .sort({ timestamp: -1 })

@@ -26,6 +26,7 @@ app.set('addToQueue', addToQueue);
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // lets the InstaPay SMS webhook accept form-encoded bodies too
 
 // ✅ Serve static files like /audio/*.wav from public/
 app.use(express.static(path.join(__dirname, 'public')));
@@ -48,11 +49,16 @@ app.use(
   require('./routes/donations')
 );
 
-// 💳 Paymob donation route
-app.use('/api/paymob', require('./routes/paymobDonations'));
+// 🏦 InstaPay donation routes
+const instapayRouter = require('./routes/instapayDonations');
+app.use('/api/instapay', instapayRouter);
 
-// 🛰️ Webhook to handle Paymob payment callback
-app.use('/api/webhook', require('./routes/webhook'));
+// Periodic sweep: flip stale InstaPay reservations past their expiry to 'expired'
+setInterval(() => {
+  instapayRouter.expireStaleReservations().catch(err =>
+    console.error('[InstaPay expiry sweep error]', err.message)
+  );
+}, 2 * 60 * 1000);
 
 // Static overlay & control panels
 app.use('/overlay', express.static(path.join(__dirname, '../overlay')));

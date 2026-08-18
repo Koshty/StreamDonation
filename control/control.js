@@ -39,6 +39,8 @@ const donateLinkInput = document.getElementById('donateLink');
 const copyStatus = document.getElementById('copyStatus');
 const filterSelect = document.getElementById('donationFilter');
 const freeModeCheckbox = document.getElementById('freeModeToggle');
+const instapayIdInput = document.getElementById('instapayId');
+const pendingContainer = document.getElementById('instapay-pending');
 
 let isPaused = false;
 
@@ -56,6 +58,7 @@ fetch(`/api/streamer/${streamer}/config`, {
     allowGifsCheckbox.checked = !!data.allowGifs;
     allowTTSCheckbox.checked = !!data.allowTTS;
     freeModeCheckbox.checked = !!data.freeMode;
+    instapayIdInput.value = data.instapayId || '';
     toggleBtn.textContent = isPaused ? 'Resume' : 'Pause';
   })
   .catch(() => {
@@ -113,13 +116,14 @@ saveBtn.onclick = async () => {
   const allowGifs = allowGifsCheckbox.checked;
   const allowTTS = allowTTSCheckbox.checked;
   const freeMode = freeModeCheckbox.checked;
+  const instapayId = instapayIdInput.value.trim();
   const res = await fetch(`/api/streamer/${streamer}/settings`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + token
     },
-    body: JSON.stringify({ imageUrl, allowGifs, allowTTS, freeMode })
+    body: JSON.stringify({ imageUrl, allowGifs, allowTTS, freeMode, instapayId })
   });
 
   const data = await res.json();
@@ -169,7 +173,7 @@ async function loadDonationHistory() {
     for (const d of donations) {
       const card = document.createElement('div');
       card.className = 'donation-card';
-      if (d.isPaymob) card.classList.add('paid'); // highlight paid
+      if (d.isPaid) card.classList.add('paid'); // highlight paid
 
       const time = new Date(d.timestamp).toLocaleString([], {
         year: 'numeric',
@@ -270,6 +274,77 @@ async function loadDonationHistory() {
   }
 }
 
+function timeUntil(dateStr) {
+  const ms = new Date(dateStr).getTime() - Date.now();
+  if (ms <= 0) return 'expiring...';
+  const mins = Math.floor(ms / 60000);
+  const secs = Math.floor((ms % 60000) / 1000);
+  return `${mins}m ${secs}s left`;
+}
+
+async function loadPendingInstapay() {
+  if (!pendingContainer) return;
+  try {
+    const res = await fetch(`/api/instapay/pending/${streamer}`, {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await res.json();
+
+    pendingContainer.innerHTML = '';
+
+    if (!data.success || !Array.isArray(data.donations) || data.donations.length === 0) {
+      pendingContainer.textContent = 'No pending InstaPay donations.';
+      return;
+    }
+
+    for (const d of data.donations) {
+      const card = document.createElement('div');
+      card.className = 'donation-card pending-instapay';
+
+      const info = document.createElement('div');
+      info.className = 'donation-info';
+      info.innerHTML = `
+        <div><strong>👤 Username:</strong> ${escapeHTML(d.username || 'Anonymous')}</div>
+        <div><strong>💬 Message:</strong> ${escapeHTML(d.message || '')}</div>
+        <div><strong>💰 Send exactly:</strong> ${d.reservedAmount} EGP</div>
+        <div><strong>⏳ Expires:</strong> ${timeUntil(d.expiresAt)}</div>
+      `;
+      card.appendChild(info);
+
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+      const confirmBtn = document.createElement('button');
+      confirmBtn.className = 'confirm-instapay-btn';
+      confirmBtn.textContent = '✅ Mark as Paid';
+      confirmBtn.dataset.id = d._id;
+      actions.appendChild(confirmBtn);
+      card.appendChild(actions);
+
+      pendingContainer.appendChild(card);
+    }
+
+    pendingContainer.querySelectorAll('.confirm-instapay-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const res = await fetch(`/api/instapay/confirm/${id}`, {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const result = await res.json();
+        if (result.success) {
+          loadPendingInstapay();
+          loadDonationHistory();
+        } else {
+          alert('❌ ' + (result.error || 'Failed to confirm donation.'));
+        }
+      });
+    });
+  } catch (err) {
+    console.error('[Control] Failed to load pending InstaPay donations:', err);
+    pendingContainer.textContent = 'Error loading pending InstaPay donations.';
+  }
+}
+
 document.getElementById('clearShownBtn')?.addEventListener('click', async () => {
   if (!confirm('Are you sure you want to delete all shown donations?')) return;
 
@@ -299,6 +374,8 @@ document.getElementById('clearShownBtn')?.addEventListener('click', async () => 
 
 window.addEventListener('DOMContentLoaded', () => {
   loadDonationHistory();
+  loadPendingInstapay();
   setInterval(loadDonationHistory, 5000);
+  setInterval(loadPendingInstapay, 5000);
   filterSelect?.addEventListener('change', loadDonationHistory);
 });

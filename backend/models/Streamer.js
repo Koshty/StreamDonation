@@ -40,7 +40,8 @@ allowTTS: {
 freeMode: {
   type: Boolean,
   default: true
-}
+},
+instapayId: { type: String, default: '' }
 
 
 });

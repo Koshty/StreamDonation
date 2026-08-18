@@ -93,10 +93,10 @@
         console.log('[Overlay] ✅ Displaying donation:', data);
 
         // ✨ GOLD FRAME TOGGLE FOR PAID DONATIONS
-        container.classList.toggle('paid', !!data.isPaymob);
+        container.classList.toggle('paid', !!data.isPaid);
 
         // ✨ HEADLINE TEXT: "user donated [amount]" IF PAID, ELSE "user says"
-        if (data.isPaymob) {
+        if (data.isPaid) {
           const amt = (typeof data.amount === 'number' && !Number.isNaN(data.amount))
             ? data.amount
             : 0;
