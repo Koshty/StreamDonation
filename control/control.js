@@ -41,6 +41,8 @@ const filterSelect = document.getElementById('donationFilter');
 const freeModeCheckbox = document.getElementById('freeModeToggle');
 const instapayIdInput = document.getElementById('instapayId');
 const pendingContainer = document.getElementById('instapay-pending');
+const requireVerifiedDonorCheckbox = document.getElementById('requireVerifiedDonorToggle');
+const bannedContainer = document.getElementById('banned-donors');
 
 let isPaused = false;
 
@@ -59,6 +61,7 @@ fetch(`/api/streamer/${streamer}/config`, {
     allowTTSCheckbox.checked = !!data.allowTTS;
     freeModeCheckbox.checked = !!data.freeMode;
     instapayIdInput.value = data.instapayId || '';
+    requireVerifiedDonorCheckbox.checked = !!data.requireVerifiedDonor;
     toggleBtn.textContent = isPaused ? 'Resume' : 'Pause';
   })
   .catch(() => {
@@ -117,13 +120,14 @@ saveBtn.onclick = async () => {
   const allowTTS = allowTTSCheckbox.checked;
   const freeMode = freeModeCheckbox.checked;
   const instapayId = instapayIdInput.value.trim();
+  const requireVerifiedDonor = requireVerifiedDonorCheckbox.checked;
   const res = await fetch(`/api/streamer/${streamer}/settings`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + token
     },
-    body: JSON.stringify({ imageUrl, allowGifs, allowTTS, freeMode, instapayId })
+    body: JSON.stringify({ imageUrl, allowGifs, allowTTS, freeMode, instapayId, requireVerifiedDonor })
   });
 
   const data = await res.json();
@@ -188,7 +192,7 @@ async function loadDonationHistory() {
       info.className = 'donation-info';
 
       const fields = [
-        { label: '👤 Username', value: d.username },
+        { label: '👤 Username', value: d.donorVerified ? `✅ ${d.username}` : d.username },
         { label: '💬 Message', value: d.message }
       ];
 
@@ -237,6 +241,14 @@ async function loadDonationHistory() {
       del.dataset.id = d._id;
       actions.appendChild(del);
 
+      if (d.donorVerified) {
+        const ban = document.createElement('button');
+        ban.className = 'ban-btn';
+        ban.textContent = '🚫 Ban Donor';
+        ban.dataset.id = d._id;
+        actions.appendChild(ban);
+      }
+
       card.appendChild(actions);
       container.appendChild(card);
     }
@@ -267,10 +279,86 @@ async function loadDonationHistory() {
       });
     });
 
+    document.querySelectorAll('.ban-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        if (!confirm('Ban this donor from donating again?')) return;
+        const res = await fetch(`/api/google/ban/${id}`, {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const result = await res.json();
+        if (result.success) {
+          loadBannedDonors();
+          loadDonationHistory();
+        } else {
+          alert('❌ ' + (result.error || 'Failed to ban donor.'));
+        }
+      });
+    });
+
   } catch (err) {
     console.error('[Control] Failed to load donation history:', err);
     const container = document.getElementById('donation-history');
     container.textContent = 'Error loading donation history. Please try again.';
+  }
+}
+
+async function loadBannedDonors() {
+  if (!bannedContainer) return;
+  try {
+    const res = await fetch(`/api/google/banned/${streamer}`, {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const data = await res.json();
+
+    bannedContainer.innerHTML = '';
+
+    if (!data.success || !Array.isArray(data.banned) || data.banned.length === 0) {
+      bannedContainer.textContent = 'No banned donors.';
+      return;
+    }
+
+    for (const b of data.banned) {
+      const card = document.createElement('div');
+      card.className = 'donation-card banned-donor';
+
+      const info = document.createElement('div');
+      info.className = 'donation-info';
+      info.innerHTML = `<div><strong>👤 Name:</strong> ${escapeHTML(b.nameAtBan || 'Unknown')}</div>
+        <div><strong>🗓️ Banned:</strong> ${new Date(b.bannedAt).toLocaleString()}</div>`;
+      card.appendChild(info);
+
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+      const unban = document.createElement('button');
+      unban.className = 'unban-btn';
+      unban.textContent = '✅ Unban';
+      unban.dataset.id = b._id;
+      actions.appendChild(unban);
+      card.appendChild(actions);
+
+      bannedContainer.appendChild(card);
+    }
+
+    bannedContainer.querySelectorAll('.unban-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const res = await fetch(`/api/google/banned/${id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        const result = await res.json();
+        if (result.success) {
+          loadBannedDonors();
+        } else {
+          alert('❌ ' + (result.error || 'Failed to unban donor.'));
+        }
+      });
+    });
+  } catch (err) {
+    console.error('[Control] Failed to load banned donors:', err);
+    bannedContainer.textContent = 'Error loading banned donors.';
   }
 }
 
@@ -375,6 +463,7 @@ document.getElementById('clearShownBtn')?.addEventListener('click', async () => 
 window.addEventListener('DOMContentLoaded', () => {
   loadDonationHistory();
   loadPendingInstapay();
+  loadBannedDonors();
   setInterval(loadDonationHistory, 5000);
   setInterval(loadPendingInstapay, 5000);
   filterSelect?.addEventListener('change', loadDonationHistory);

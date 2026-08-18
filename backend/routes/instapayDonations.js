@@ -2,8 +2,10 @@ const express = require('express');
 const router = express.Router();
 const Streamer = require('../models/Streamer');
 const Donation = require('../models/Donation');
+const BannedDonor = require('../models/BannedDonor');
 const authMiddleware = require('../middleware/authMiddleware');
 const { getMatchedProfanities, normalize } = require('../Utils/profanity');
+const { verifyDonorToken } = require('../Utils/donorToken');
 
 const RESERVATION_WINDOW_MINUTES = Number(process.env.INSTAPAY_RESERVATION_WINDOW_MINUTES) || 25;
 
@@ -40,7 +42,7 @@ async function expireStaleReservations() {
 }
 
 // Never suggests sending MORE than requested — only ever a smaller, unique amount.
-async function reserveDonation({ requestedAmount, streamer, username, message, imageUrl }) {
+async function reserveDonation({ requestedAmount, streamer, username, message, imageUrl, donorFields = {} }) {
   const requestedCents = Math.round(requestedAmount * 100);
   const maxReductionCents = Math.min(100, Math.max(10, Math.round(requestedCents * 0.02)));
 
@@ -66,7 +68,8 @@ async function reserveDonation({ requestedAmount, streamer, username, message, i
           reservedAmount: candidateAmount,
           reservedAt: now,
           expiresAt,
-          pending: true
+          pending: true,
+          ...donorFields
         }).save();
         return donation;
       } catch (err) {
@@ -97,7 +100,8 @@ function emitPaidDonation(req, donation, streamer) {
     timestamp: donation.timestamp,
     amount: donation.amount,
     isPaid: true,
-    ...(donation.audioUrl ? { audioUrl: donation.audioUrl } : {})
+    ...(donation.audioUrl ? { audioUrl: donation.audioUrl } : {}),
+    ...(donation.donorVerified ? { donorVerified: true, donorAvatarUrl: donation.donorAvatarUrl } : {})
   };
 
   if (!buffer[streamer.username]) buffer[streamer.username] = [];
@@ -121,7 +125,8 @@ router.post('/start', async (req, res) => {
       username = 'Anonymous',
       message = '',
       imageUrl = '',
-      streamer = 'default'
+      streamer = 'default',
+      donorToken
     } = req.body;
 
     const requestedAmount = parseFloat(amount);
@@ -129,8 +134,12 @@ router.post('/start', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Invalid amount.' });
     }
 
-    const badUsernameWords = getMatchedProfanities(normalize(username));
+    const donorPayload = verifyDonorToken(donorToken);
+    const verified = !!(donorPayload && donorPayload.streamer === streamer);
+    const finalUsername = verified ? donorPayload.name : (username || 'Anonymous');
+
     const badMessageWords = getMatchedProfanities(normalize(message));
+    const badUsernameWords = verified ? [] : getMatchedProfanities(normalize(finalUsername));
     if (badUsernameWords.length || badMessageWords.length) {
       const allBadWords = [...badUsernameWords, ...badMessageWords];
       const uniqueWords = [...new Set(allBadWords)].join(', ');
@@ -147,15 +156,31 @@ router.post('/start', async (req, res) => {
     if (!streamerDoc.instapayId) {
       return res.status(400).json({ success: false, error: 'Streamer has not configured InstaPay yet.' });
     }
+    if (streamerDoc.requireVerifiedDonor && !verified) {
+      return res.status(400).json({
+        success: false,
+        error: '❌ This streamer requires verified Google sign-in to donate.'
+      });
+    }
+
+    if (verified) {
+      const banned = await BannedDonor.findOne({ streamerToken: streamerDoc.overlayToken, googleId: donorPayload.googleId });
+      if (banned) {
+        return res.status(403).json({ success: false, error: '❌ You are not permitted to donate to this streamer.' });
+      }
+    }
 
     let donation;
     try {
       donation = await reserveDonation({
         requestedAmount,
         streamer: streamerDoc,
-        username: username || 'Anonymous',
+        username: finalUsername,
         message,
-        imageUrl
+        imageUrl,
+        donorFields: verified
+          ? { donorVerified: true, googleId: donorPayload.googleId, donorAvatarUrl: donorPayload.picture }
+          : {}
       });
     } catch (err) {
       if (err.code === 'POOL_EXHAUSTED') {

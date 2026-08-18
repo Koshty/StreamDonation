@@ -1,3 +1,5 @@
+const YOUTUBE_ICON_SVG = '<svg viewBox="0 0 24 17" width="26" height="18" style="vertical-align:middle;margin-right:6px;"><path fill="#FF0000" d="M23.5 2.6A3 3 0 0 0 21.4.5C19.5 0 12 0 12 0S4.5 0 2.6.5A3 3 0 0 0 .5 2.6 31 31 0 0 0 0 8.3a31 31 0 0 0 .5 5.7 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1 31 31 0 0 0 .5-5.7 31 31 0 0 0-.5-5.7z"/><path fill="#fff" d="M9.6 11.8V4.8l6.3 3.5-6.3 3.5z"/></svg>';
+
 (async () => {
   const urlParams = new URLSearchParams(window.location.search);
   const token = urlParams.get('id');
@@ -96,14 +98,27 @@
         container.classList.toggle('paid', !!data.isPaid);
 
         // ✨ HEADLINE TEXT: "user donated [amount]" IF PAID, ELSE "user says"
+        // Built as real DOM nodes (not string concatenation) so the untrusted
+        // username/message text stays safely in a text node — the YouTube icon
+        // markup is fixed, code-authored SVG, never derived from donor input.
+        username.innerHTML = '';
+        if (data.donorVerified) {
+          const badge = document.createElement('span');
+          badge.className = 'verified-badge';
+          badge.innerHTML = YOUTUBE_ICON_SVG;
+          username.appendChild(badge);
+        }
+
+        let nameText;
         if (data.isPaid) {
           const amt = (typeof data.amount === 'number' && !Number.isNaN(data.amount))
             ? data.amount
             : 0;
-          username.textContent = `${data.username || 'Anonymous'} donated ${amt} EGP`;
+          nameText = `${data.username || 'Anonymous'} donated ${amt} EGP`;
         } else {
-          username.textContent = `${data.username || 'Anonymous'} says`;
+          nameText = `${data.username || 'Anonymous'} says`;
         }
+        username.appendChild(document.createTextNode(nameText));
 
         // message stays as-is
         message.textContent = data.message || '';

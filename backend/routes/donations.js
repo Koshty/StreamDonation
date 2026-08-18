@@ -4,8 +4,10 @@ const fs = require('fs');
 const path = require('path');
 const Streamer = require('../models/Streamer');
 const Donation = require('../models/Donation');
+const BannedDonor = require('../models/BannedDonor');
 const generateTTS = require('../Utils/generateTTS');
 const { hasProfanity, getMatchedProfanities, normalize } = require('../Utils/profanity');
+const { verifyDonorToken } = require('../Utils/donorToken');
 
 const donationQueue = {};
 const lastShownTimestamps = {};
@@ -27,7 +29,7 @@ function addToQueue(streamer, donation) {
 
 router.post('/test', async (req, res) => {
   const io = req.app.get('io');
-  let { username = '', message = '', imageUrl, streamer = 'default' } = req.body;
+  let { username = '', message = '', imageUrl, streamer = 'default', donorToken } = req.body;
 
   username = username.trim();
   message = message.trim();
@@ -39,10 +41,17 @@ router.post('/test', async (req, res) => {
     });
   }
 
-  if (!username) username = 'Anonymous';
+  const donorPayload = verifyDonorToken(donorToken);
+  const verified = !!(donorPayload && donorPayload.streamer === streamer);
 
-  const badUsernameWords = getMatchedProfanities(normalize(username));
+  if (verified) {
+    username = donorPayload.name;
+  } else if (!username) {
+    username = 'Anonymous';
+  }
+
   const badMessageWords = getMatchedProfanities(normalize(message));
+  const badUsernameWords = verified ? [] : getMatchedProfanities(normalize(username));
 
   if (badUsernameWords.length || badMessageWords.length) {
     const allBadWords = [...badUsernameWords, ...badMessageWords];
@@ -56,6 +65,20 @@ router.post('/test', async (req, res) => {
   try {
     const user = await Streamer.findOne({ username: streamer });
     if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
+
+    if (user.requireVerifiedDonor && !verified) {
+      return res.status(400).json({
+        success: false,
+        error: '❌ This streamer requires verified Google sign-in to donate.'
+      });
+    }
+
+    if (verified) {
+      const banned = await BannedDonor.findOne({ streamerToken: user.overlayToken, googleId: donorPayload.googleId });
+      if (banned) {
+        return res.status(403).json({ success: false, error: '❌ You are not permitted to donate to this streamer.' });
+      }
+    }
 
     let finalImageUrl = imageUrl?.trim();
     if (!user.allowGifs) {
@@ -73,7 +96,8 @@ router.post('/test', async (req, res) => {
       message,
       imageUrl: finalImageUrl,
       timestamp,
-      shown: false
+      shown: false,
+      ...(verified ? { donorVerified: true, googleId: donorPayload.googleId, donorAvatarUrl: donorPayload.picture } : {})
     });
 
     await newDonation.save();
@@ -98,7 +122,8 @@ router.post('/test', async (req, res) => {
       imageUrl: finalImageUrl,
       delayed: user.paused,
       timestamp,
-      ...(audioUrl ? { audioUrl } : {})
+      ...(audioUrl ? { audioUrl } : {}),
+      ...(verified ? { donorVerified: true, donorAvatarUrl: donorPayload.picture } : {})
     };
 
     addToQueue(streamer, donation);

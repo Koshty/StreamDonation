@@ -41,7 +41,8 @@ freeMode: {
   type: Boolean,
   default: true
 },
-instapayId: { type: String, default: '' }
+instapayId: { type: String, default: '' },
+requireVerifiedDonor: { type: Boolean, default: false }
 
 
 });

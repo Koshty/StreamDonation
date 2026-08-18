@@ -5,7 +5,34 @@
   <title>Send a Donation Message</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="/overlay/donaterform.css" />
+  <script src="https://accounts.google.com/gsi/client?hl=en" async defer onload="window.__gsiLoaded && window.__gsiLoaded()"></script>
   <style>
+    #verifiedDonorInfo img {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    #verifiedDonorInfo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 1.2rem;
+      background: #2a2a2a;
+      padding: 0.6rem;
+      border-radius: 8px;
+    }
+    #verifiedDonorInfo button {
+      margin-left: auto;
+      font-size: 0.8rem;
+      padding: 0.3rem 0.6rem;
+    }
+    #requireVerifiedHint {
+      color: #ffb300;
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+    }
     #giphyResults img.selected {
       outline: 3px solid #00ffcc;
     }
@@ -22,9 +49,19 @@
 <body>
   <div class="form-container">
     <h2>Send a Donation Message</h2>
+    <p id="requireVerifiedHint" style="display:none;">This streamer requires a verified sign-in to donate.</p>
+    <div id="googleSignInBtn"></div>
+    <div id="verifiedDonorInfo" style="display:none;">
+      <img id="verifiedAvatar" src="" alt="" />
+      <span>✅ Verified as <strong id="verifiedName"></strong></span>
+      <button type="button" id="signOutBtn">Not you?</button>
+    </div>
+
     <form id="donation-form">
-      <label for="username">Username</label>
-      <input type="text" id="username" placeholder="Anonymous" maxlength="25" />
+      <div id="username-field">
+        <label for="username">Username</label>
+        <input type="text" id="username" placeholder="Anonymous" maxlength="25" />
+      </div>
 
       <label for="message">Message</label>
       <textarea id="message" placeholder="Your message" maxlength="360"></textarea>
@@ -75,9 +112,13 @@
 
     let overlayToken = '';
     let GIPHY_API_KEY = '';
+    let GOOGLE_CLIENT_ID = '';
     let allowGifs = true;
     let defaultImageUrl = '';
     let freeMode = true;
+    let requireVerifiedDonor = false;
+    let donorToken = null;
+    let verifiedName = null;
 
     const donationForm = document.getElementById('donation-form');
     const statusText = document.getElementById('status');
@@ -89,12 +130,115 @@
     const amountSection = document.getElementById('amount-section');
     const amountInput = document.getElementById('amount');
     const messageInput = document.getElementById('message');
+    const usernameField = document.getElementById('username-field');
+    const requireVerifiedHint = document.getElementById('requireVerifiedHint');
+    const googleSignInBtn = document.getElementById('googleSignInBtn');
+    const verifiedDonorInfo = document.getElementById('verifiedDonorInfo');
+    const verifiedAvatar = document.getElementById('verifiedAvatar');
+    const verifiedNameEl = document.getElementById('verifiedName');
+    const signOutBtn = document.getElementById('signOutBtn');
+    const submitBtn = donationForm.querySelector('button[type="submit"]');
 
     function autoResizeMessage() {
       messageInput.style.height = 'auto';
       messageInput.style.height = messageInput.scrollHeight + 'px';
     }
     messageInput.addEventListener('input', autoResizeMessage);
+
+    const DONOR_TOKEN_STORAGE_KEY = `donorToken:${username || ''}`;
+
+    function saveDonorToken(tok, name, picture) {
+      try {
+        sessionStorage.setItem(DONOR_TOKEN_STORAGE_KEY, JSON.stringify({ donorToken: tok, name, picture }));
+      } catch (err) { /* storage unavailable, not fatal */ }
+    }
+
+    function loadSavedDonorToken() {
+      try {
+        const raw = sessionStorage.getItem(DONOR_TOKEN_STORAGE_KEY);
+        if (!raw) return null;
+        const saved = JSON.parse(raw);
+        // Decode (not verify — the server always re-verifies) just to check local expiry.
+        const payload = JSON.parse(atob(saved.donorToken.split('.')[1]));
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+          sessionStorage.removeItem(DONOR_TOKEN_STORAGE_KEY);
+          return null;
+        }
+        return saved;
+      } catch (err) {
+        return null;
+      }
+    }
+
+    function clearSavedDonorToken() {
+      try { sessionStorage.removeItem(DONOR_TOKEN_STORAGE_KEY); } catch (err) { /* ignore */ }
+    }
+
+    function updateSubmitState() {
+      submitBtn.disabled = requireVerifiedDonor && !donorToken;
+      submitBtn.style.opacity = submitBtn.disabled ? '0.5' : '1';
+      // When verification is required, don't even show the form until signed in.
+      donationForm.style.display = (requireVerifiedDonor && !donorToken) ? 'none' : 'block';
+    }
+
+    function tryInitGoogleSignIn() {
+      if (!requireVerifiedDonor) return; // only show Google sign-in when it's actually needed
+      if (!GOOGLE_CLIENT_ID || typeof google === 'undefined' || !google.accounts) return;
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleCredential
+      });
+      google.accounts.id.renderButton(googleSignInBtn, {
+        theme: 'filled_blue',
+        size: 'large',
+        shape: 'pill',
+        text: 'signin_with',
+        locale: 'en'
+      });
+    }
+    window.__gsiLoaded = tryInitGoogleSignIn;
+
+    async function handleGoogleCredential(response) {
+      try {
+        const res = await fetch('/api/google/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ credential: response.credential, streamer: username })
+        });
+        const data = await res.json();
+        if (data.success) {
+          donorToken = data.donorToken;
+          verifiedName = data.name;
+          saveDonorToken(data.donorToken, data.name, data.picture);
+          showVerifiedState(data.name, data.picture);
+        } else {
+          donorToken = null;
+          statusText.textContent = '❌ ' + (data.error || 'Google sign-in failed.');
+        }
+      } catch (err) {
+        console.error('[Google] verify failed:', err);
+        statusText.textContent = '❌ Google sign-in failed. Please try again.';
+      }
+      updateSubmitState();
+    }
+
+    function showVerifiedState(name, picture) {
+      googleSignInBtn.style.display = 'none';
+      usernameField.style.display = 'none';
+      verifiedDonorInfo.style.display = 'flex';
+      verifiedAvatar.src = picture || '';
+      verifiedNameEl.textContent = name;
+    }
+
+    signOutBtn.addEventListener('click', () => {
+      donorToken = null;
+      verifiedName = null;
+      clearSavedDonorToken();
+      googleSignInBtn.style.display = 'block';
+      usernameField.style.display = 'block';
+      verifiedDonorInfo.style.display = 'none';
+      updateSubmitState();
+    });
 
     if (!username) {
       statusText.textContent = '❌ Invalid link. Streamer missing.';
@@ -116,11 +260,26 @@
         .then(([config, env]) => {
           console.log('CONFIG:', config); // Add this line
           GIPHY_API_KEY = env.giphyKey;
+          GOOGLE_CLIENT_ID = env.googleClientId || '';
           allowGifs = config.allowGifs;
           defaultImageUrl = config.defaultImageUrl;
           freeMode = config.freeMode === true;
+          requireVerifiedDonor = config.requireVerifiedDonor === true;
           if (!allowGifs) gifSection.style.display = 'none';
           amountSection.style.display = freeMode ? 'none' : 'block';
+          requireVerifiedHint.style.display = requireVerifiedDonor ? 'block' : 'none';
+
+          if (requireVerifiedDonor) {
+            const saved = loadSavedDonorToken();
+            if (saved) {
+              donorToken = saved.donorToken;
+              verifiedName = saved.name;
+              showVerifiedState(saved.name, saved.picture);
+            }
+          }
+
+          updateSubmitState();
+          tryInitGoogleSignIn();
         })
         .catch(err => {
           console.error('[Donation] Streamer resolution failed:', err);
@@ -173,7 +332,12 @@
         return;
       }
 
-      const sender = document.getElementById('username').value.trim().slice(0, 25);
+      if (requireVerifiedDonor && !donorToken) {
+        statusText.textContent = '❌ Please sign in with Google to donate.';
+        return;
+      }
+
+      const sender = donorToken ? verifiedName : document.getElementById('username').value.trim().slice(0, 25);
       const message = document.getElementById('message').value.trim().slice(0, 360);
       let imageUrl = imageInput.value.trim();
       let amount = 0;
@@ -197,7 +361,8 @@
             username: sender || 'Anonymous',
             message,
             imageUrl,
-            streamer: username
+            streamer: username,
+            donorToken
           })
         });
 
@@ -223,7 +388,8 @@
           username: sender || 'Anonymous',
           message,
           imageUrl,
-          streamer: username
+          streamer: username,
+          donorToken
         })
       });
 

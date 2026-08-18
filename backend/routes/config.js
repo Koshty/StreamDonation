@@ -12,7 +12,8 @@ router.get('/:streamer', async (req, res) => {
       paused: user.paused,
       defaultImageUrl: user.defaultImageUrl,
       allowGifs: user.allowGifs,
-      freeMode: user.freeMode
+      freeMode: user.freeMode,
+      requireVerifiedDonor: user.requireVerifiedDonor
     });
   } catch (err) {
     console.error('[CONFIG GET ERROR]', err);

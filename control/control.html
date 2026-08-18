@@ -122,6 +122,25 @@
   border: 2px solid orange;
 }
 
+#banned-donors {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 0.5rem;
+}
+
+.donation-card.banned-donor {
+  border: 2px solid #b00020;
+}
+
+.ban-btn {
+  background-color: #b00020;
+}
+
+.ban-btn:hover {
+  background-color: #d32f2f;
+}
+
 </style>
 
 </head>
@@ -163,8 +182,14 @@
   Free Mode (No Payment Required)
 </label>
 
+<label>
+  <input type="checkbox" id="requireVerifiedDonorToggle" />
+  Require Verified Google Login to Donate
+</label>
+
   <label for="instapayId">InstaPay ID / Mobile Number</label>
   <input type="text" id="instapayId" placeholder="e.g. 01001234567 or yourname@instapay" />
+
 
   <button id="saveImage">Save</button>
   <p id="status"></p>
@@ -192,6 +217,9 @@
 
   <h3>⏳ Pending InstaPay Donations</h3>
   <div id="instapay-pending"></div>
+
+  <h3>🚫 Banned Donors</h3>
+  <div id="banned-donors"></div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="control.js"></script>

@@ -72,6 +72,18 @@ const donationSchema = new mongoose.Schema({
   smsRawText: {
     type: String
   },
+
+  // Verified Google donor identity (only populated when signed in via Google)
+  donorVerified: {
+    type: Boolean,
+    default: false
+  },
+  googleId: {
+    type: String
+  },
+  donorAvatarUrl: {
+    type: String
+  },
 });
 
 // Only currently-reserved donations need a unique reservedAmount — once

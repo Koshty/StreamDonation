@@ -53,6 +53,9 @@ app.use(
 const instapayRouter = require('./routes/instapayDonations');
 app.use('/api/instapay', instapayRouter);
 
+// ✅ Verified Google donor identity + ban list
+app.use('/api/google', require('./routes/googleAuth'));
+
 // Periodic sweep: flip stale InstaPay reservations past their expiry to 'expired'
 setInterval(() => {
   instapayRouter.expireStaleReservations().catch(err =>
@@ -84,11 +87,11 @@ app.get('/donate', (_, res) =>
   res.sendFile(path.join(__dirname, '../overlay/DonaterForm.html'))
 );
 
-// GIPHY API key for frontend
+// Public env values the frontend needs (all safe to expose client-side)
 app.get('/env-config', (req, res) => {
   const key = process.env.GIPHY_API_KEY;
   if (!key) return res.status(500).send('GIPHY key missing');
-  res.json({ giphyKey: key });
+  res.json({ giphyKey: key, googleClientId: process.env.GOOGLE_CLIENT_ID || '' });
 });
 
 // ✅ API to resolve overlay token securely
