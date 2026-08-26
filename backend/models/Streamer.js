@@ -37,9 +37,12 @@ allowTTS: {
   type: Boolean,
   default: true
 },
-freeMode: {
-  type: Boolean,
-  default: true
+// 'free' = no amount field, message-only. 'optional' = amount field shown but not
+// required, donor's choice per donation. 'paid' = amount required, no free option.
+donationMode: {
+  type: String,
+  enum: ['free', 'optional', 'paid'],
+  default: 'free'
 },
 instapayId: { type: String, default: '' },
 instapaySmsSecret: { type: String, default: '' },

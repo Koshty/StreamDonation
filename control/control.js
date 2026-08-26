@@ -38,7 +38,7 @@ const obsLinkInput = document.getElementById('obsLink');
 const donateLinkInput = document.getElementById('donateLink');
 const copyStatus = document.getElementById('copyStatus');
 const filterSelect = document.getElementById('donationFilter');
-const freeModeCheckbox = document.getElementById('freeModeToggle');
+const donationModeSelect = document.getElementById('donationModeSelect');
 const instapayIdInput = document.getElementById('instapayId');
 const pendingContainer = document.getElementById('instapay-pending');
 const requireVerifiedDonorCheckbox = document.getElementById('requireVerifiedDonorToggle');
@@ -62,7 +62,7 @@ fetch(`/api/streamer/${streamer}/config`, {
     imagePreview.src = data.defaultImageUrl || '';
     allowGifsCheckbox.checked = !!data.allowGifs;
     allowTTSCheckbox.checked = !!data.allowTTS;
-    freeModeCheckbox.checked = !!data.freeMode;
+    donationModeSelect.value = data.donationMode || 'free';
     instapayIdInput.value = data.instapayId || '';
     requireVerifiedDonorCheckbox.checked = !!data.requireVerifiedDonor;
     instapaySmsUrlInput.value = `${window.location.origin}/api/instapay/sms/${streamer}`;
@@ -143,7 +143,7 @@ saveBtn.onclick = async () => {
   const imageUrl = imageInput.value.trim();
   const allowGifs = allowGifsCheckbox.checked;
   const allowTTS = allowTTSCheckbox.checked;
-  const freeMode = freeModeCheckbox.checked;
+  const donationMode = donationModeSelect.value;
   const instapayId = instapayIdInput.value.trim();
   const requireVerifiedDonor = requireVerifiedDonorCheckbox.checked;
   const res = await fetch(`/api/streamer/${streamer}/settings`, {
@@ -152,7 +152,7 @@ saveBtn.onclick = async () => {
       'Content-Type': 'application/json',
       'Authorization': 'Bearer ' + token
     },
-    body: JSON.stringify({ imageUrl, allowGifs, allowTTS, freeMode, instapayId, requireVerifiedDonor })
+    body: JSON.stringify({ imageUrl, allowGifs, allowTTS, donationMode, instapayId, requireVerifiedDonor })
   });
 
   const data = await res.json();

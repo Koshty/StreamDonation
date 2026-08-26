@@ -12,7 +12,7 @@ router.get('/:streamer', async (req, res) => {
       paused: user.paused,
       defaultImageUrl: user.defaultImageUrl,
       allowGifs: user.allowGifs,
-      freeMode: user.freeMode,
+      donationMode: user.donationMode,
       requireVerifiedDonor: user.requireVerifiedDonor
     });
   } catch (err) {

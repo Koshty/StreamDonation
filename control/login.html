@@ -4,39 +4,138 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Streamer Login</title>
+  <script>
+    // If already logged in, skip straight to the control panel instead of
+    // showing the login form again — control.js re-validates the token itself
+    // and bounces back here if it's actually expired/invalid.
+    if (localStorage.getItem('token')) {
+      window.location.href = '/control/';
+    }
+  </script>
   <style>
-    body { font-family: sans-serif; padding: 2rem; }
-    input, button { padding: 0.5rem; margin: 0.5rem 0; width: 100%; }
-    .error { color: red; }
+    :root {
+      --bg: #0e1013;
+      --surface: #171a1f;
+      --surface-2: #1f2329;
+      --border: #2a2f37;
+      --text: #f0f1f3;
+      --text-muted: #9aa1ab;
+      --accent: #5b8def;
+      --accent-hover: #4a7bdb;
+      --danger: #e5484d;
+      --radius: 10px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .auth-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2rem;
+      width: 100%;
+      max-width: 380px;
+    }
+    h2 {
+      margin: 0 0 1.5rem;
+      font-size: 1.3rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 0.3rem;
+    }
+    .field { margin-bottom: 1.1rem; }
+    input {
+      width: 100%;
+      padding: 0.6rem 0.7rem;
+      font-size: 0.95rem;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      outline: none;
+    }
+    input:focus { border-color: var(--accent); }
+    button {
+      width: 100%;
+      font-family: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 0.65rem 1rem;
+      border-radius: 8px;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: white;
+      cursor: pointer;
+      margin-top: 0.4rem;
+      transition: background 0.15s ease;
+    }
+    button:hover { background: var(--accent-hover); }
+    .error {
+      color: var(--danger);
+      font-size: 0.85rem;
+      margin: 0.6rem 0 0;
+      min-height: 1.1rem;
+    }
+    .switch-link {
+      margin: 1.25rem 0 0;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      text-align: center;
+    }
+    .switch-link a { color: var(--accent); text-decoration: none; }
+    .switch-link a:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
-  <h2>Streamer Login</h2>
-  <form id="login-form" name="login" autocomplete="on">
-    <!-- Prevents Chrome from misfilling wrong fields -->
-    <input type="text" name="fake-username" style="display:none;" aria-hidden="true" />
+  <div class="auth-card">
+    <h2>🎛️ Streamer Login</h2>
+    <form id="login-form" name="login" autocomplete="on">
+      <!-- Prevents Chrome from misfilling wrong fields -->
+      <input type="text" name="fake-username" style="display:none;" aria-hidden="true" />
 
-    <input
-      type="text"
-      id="username"
-      name="username"
-      placeholder="Username"
-      required
-      autocomplete="username"
-    />
-    <input
-      type="password"
-      id="password"
-      name="password"
-      placeholder="Password"
-      required
-      autocomplete="current-password"
-    />
-    <button type="submit">Login</button>
-    <p class="error" id="error-msg"></p>
-  </form>
+      <div class="field">
+        <label for="username">Username</label>
+        <input
+          type="text"
+          id="username"
+          name="username"
+          placeholder="Username"
+          required
+          autocomplete="username"
+        />
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          placeholder="Password"
+          required
+          autocomplete="current-password"
+        />
+      </div>
+      <button type="submit">Login</button>
+      <p class="error" id="error-msg"></p>
+    </form>
 
-  <p>Don't have an account? <a href="/register">Register here</a></p>
+    <p class="switch-link">Don't have an account? <a href="/register">Register here</a></p>
+  </div>
 
   <script>
     const form = document.getElementById('login-form');

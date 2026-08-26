@@ -19,22 +19,23 @@
       align-items: center;
       gap: 8px;
       margin-bottom: 1.2rem;
-      background: #2a2a2a;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
       padding: 0.6rem;
       border-radius: 8px;
     }
     #verifiedDonorInfo button {
       margin-left: auto;
       font-size: 0.8rem;
-      padding: 0.3rem 0.6rem;
+      padding: 0.35rem 0.7rem;
     }
     #requireVerifiedHint {
-      color: #ffb300;
+      color: var(--warning);
       font-size: 0.9rem;
       margin-bottom: 0.5rem;
     }
     #giphyResults img.selected {
-      outline: 3px solid #00ffcc;
+      outline: 3px solid var(--accent);
     }
     .copy-row {
       display: flex;
@@ -43,6 +44,21 @@
     }
     .copy-row input {
       flex: 1;
+    }
+    #instapay-panel {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+    }
+    #instapay-panel h3 {
+      margin: 0 0 0.75rem;
+      font-size: 1.05rem;
+    }
+    #instapayStatusText {
+      margin-top: 1rem;
+      font-size: 0.9rem;
+      color: var(--text-muted);
     }
   </style>
 </head>
@@ -67,7 +83,7 @@
       <textarea id="message" placeholder="Your message" maxlength="360"></textarea>
 
       <div id="amount-section">
-        <label for="amount">Amount (EGP)</label>
+        <label for="amount" id="amountLabel">Amount (EGP)</label>
         <input type="number" id="amount" placeholder="e.g. 10" min="1" step="0.01" />
       </div>
 
@@ -115,7 +131,7 @@
     let GOOGLE_CLIENT_ID = '';
     let allowGifs = true;
     let defaultImageUrl = '';
-    let freeMode = true;
+    let donationMode = 'free'; // 'free' | 'optional' | 'paid'
     let requireVerifiedDonor = false;
     let donorToken = null;
     let verifiedName = null;
@@ -129,6 +145,7 @@
     const giphyResults = document.getElementById('giphyResults');
     const amountSection = document.getElementById('amount-section');
     const amountInput = document.getElementById('amount');
+    const amountLabel = document.getElementById('amountLabel');
     const messageInput = document.getElementById('message');
     const usernameField = document.getElementById('username-field');
     const requireVerifiedHint = document.getElementById('requireVerifiedHint');
@@ -263,10 +280,19 @@
           GOOGLE_CLIENT_ID = env.googleClientId || '';
           allowGifs = config.allowGifs;
           defaultImageUrl = config.defaultImageUrl;
-          freeMode = config.freeMode === true;
+          donationMode = config.donationMode || 'free';
           requireVerifiedDonor = config.requireVerifiedDonor === true;
           if (!allowGifs) gifSection.style.display = 'none';
-          amountSection.style.display = freeMode ? 'none' : 'block';
+          amountSection.style.display = donationMode === 'free' ? 'none' : 'block';
+          if (donationMode === 'paid') {
+            amountInput.required = true;
+            amountLabel.textContent = 'Amount (EGP)';
+            amountInput.placeholder = 'e.g. 10';
+          } else if (donationMode === 'optional') {
+            amountInput.required = false;
+            amountLabel.textContent = 'Amount (EGP) — optional';
+            amountInput.placeholder = 'Leave blank to donate for free';
+          }
           requireVerifiedHint.style.display = requireVerifiedDonor ? 'block' : 'none';
 
           if (requireVerifiedDonor) {
@@ -340,15 +366,19 @@
       const sender = donorToken ? verifiedName : document.getElementById('username').value.trim().slice(0, 25);
       const message = document.getElementById('message').value.trim().slice(0, 360);
       let imageUrl = imageInput.value.trim();
-      let amount = 0;
 
       if (!imageUrl && defaultImageUrl) {
         imageUrl = defaultImageUrl;
       }
 
-      if (!freeMode) {
-        amount = parseFloat(amountInput.value);
-        if (isNaN(amount) || amount < 1) {
+      const rawAmount = amountInput.value.trim();
+      const parsedAmount = parseFloat(rawAmount);
+      const hasValidAmount = rawAmount !== '' && !isNaN(parsedAmount) && parsedAmount >= 1;
+      // 'paid' always pays; 'optional' pays only if the donor actually entered an amount.
+      const wantsToPay = donationMode === 'paid' || (donationMode === 'optional' && hasValidAmount);
+
+      if (wantsToPay) {
+        if (!hasValidAmount) {
           statusText.textContent = '❌ Please enter a valid amount.';
           return;
         }
@@ -357,7 +387,7 @@
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            amount,
+            amount: parsedAmount,
             username: sender || 'Anonymous',
             message,
             imageUrl,
@@ -375,7 +405,7 @@
         return;
       }
 
-      // Free mode validation: don't allow empty username + message
+      // Free path: donationMode === 'free', or 'optional' with no amount entered.
       if (!sender && !message) {
         statusText.textContent = '❌ Please enter a message.';
         return;

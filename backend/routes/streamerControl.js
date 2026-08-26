@@ -21,7 +21,7 @@ router.get('/:streamer/config', authMiddleware, async (req, res) => {
       defaultImageUrl: user.defaultImageUrl,
       allowGifs: user.allowGifs,
       allowTTS: user.allowTTS  ,
-      freeMode: user.freeMode  ,
+      donationMode: user.donationMode,
       instapayId: user.instapayId,
       instapaySmsSecret: user.instapaySmsSecret,
       requireVerifiedDonor: user.requireVerifiedDonor
@@ -62,7 +62,8 @@ router.post('/:streamer/pause', authMiddleware, async (req, res) => {
 // ✅ POST to save image URL, allowGifs, allowTTS
 router.post('/:streamer/settings', authMiddleware, async (req, res) => {
   const { streamer } = req.params;
-  const { imageUrl, allowGifs, allowTTS,freeMode, instapayId, requireVerifiedDonor } = req.body;
+  const { imageUrl, allowGifs, allowTTS, donationMode, instapayId, requireVerifiedDonor } = req.body;
+  const validModes = ['free', 'optional', 'paid'];
 
   if (req.user.username !== streamer) {
     return res.status(403).json({ error: 'Forbidden' });
@@ -75,7 +76,7 @@ router.post('/:streamer/settings', authMiddleware, async (req, res) => {
         defaultImageUrl: imageUrl,
         allowGifs: !!allowGifs,
         allowTTS: !!allowTTS ,
-        freeMode: !!freeMode ,
+        donationMode: validModes.includes(donationMode) ? donationMode : 'free',
         instapayId: (instapayId || '').trim(),
         requireVerifiedDonor: !!requireVerifiedDonor
       },

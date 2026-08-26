@@ -5,65 +5,276 @@
   <title>Overlay Control Panel</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body {
-      font-family: sans-serif;
-      padding: 1rem;
-      background: #111;
-      color: white;
+    :root {
+      --bg: #0e1013;
+      --surface: #171a1f;
+      --surface-2: #1f2329;
+      --border: #2a2f37;
+      --text: #f0f1f3;
+      --text-muted: #9aa1ab;
+      --accent: #5b8def;
+      --accent-hover: #4a7bdb;
+      --danger: #e5484d;
+      --danger-hover: #ff5b60;
+      --gold: #e6b800;
+      --radius: 10px;
     }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 1.5rem;
+      line-height: 1.4;
+    }
+
+    .page {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1, h2, h3 {
+      margin: 0 0 0.75rem;
+      font-weight: 600;
+    }
+
+    h1 { font-size: 1.4rem; }
+    h2 { font-size: 1.05rem; }
+    h3 { font-size: 0.9rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
 
     label {
       display: block;
-      margin-top: 1rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 0.3rem;
     }
 
-    input[type="text"] {
+    input[type="text"], input[type="number"], select {
       width: 100%;
-      padding: 0.5rem;
-      font-size: 1rem;
-      margin-top: 0.25rem;
+      padding: 0.55rem 0.7rem;
+      font-size: 0.95rem;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      outline: none;
     }
+
+    input[type="text"]:focus, select:focus {
+      border-color: var(--accent);
+    }
+
+    input[readonly] {
+      color: var(--text-muted);
+    }
+
+    .field { margin-bottom: 1.1rem; }
+    .field:last-child { margin-bottom: 0; }
 
     button {
-      padding: 0.5rem 1rem;
-      margin-top: 1rem;
-      font-size: 1rem;
-      cursor: pointer;
-    }
-
-    #imagePreview {
-      display: block;
-      max-width: 200px;
-      margin-top: 1rem;
+      font-family: inherit;
+      font-size: 0.9rem;
+      font-weight: 500;
+      padding: 0.55rem 1rem;
       border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
     }
 
-    #status, #copyStatus {
-      margin-top: 0.5rem;
-      color: lightgreen;
+    button:hover { background: #262b32; }
+    button:active { transform: translateY(1px); }
+
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+    .btn-primary:hover { background: var(--accent-hover); }
+
+    .btn-danger {
+      background: var(--danger);
+      border-color: var(--danger);
+      color: white;
+    }
+    .btn-danger:hover { background: var(--danger-hover); }
+
+    .btn-ghost {
+      background: transparent;
+    }
+
+    /* ---------- Top bar ---------- */
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1.25rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topbar h1 { display: flex; align-items: center; gap: 0.5rem; }
+
+    #streamer-display {
+      margin: 0.15rem 0 0;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .topbar-actions {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+    }
+
+    /* ---------- Cards / grid ---------- */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+    }
+
+    /* Only stacks spacing between the full-width sections below the grid
+       (Donation History, Pending, Banned) — must not match cards inside .grid,
+       which caused those cards to visually start lower than their row-mates. */
+    .page > .card + .card { margin-top: 1rem; }
+
+    .subsection {
+      margin-top: 1.25rem;
+      padding-top: 1.1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .copy-row {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .copy-row input { flex: 1; }
+
+    .image-preview {
+      display: block;
+      max-width: 160px;
+      max-height: 160px;
+      margin-top: 0.6rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+
+    /* ---------- Toggle switches ---------- */
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.6rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .toggle-row:last-child { border-bottom: none; }
+    .toggle-row span { font-size: 0.9rem; }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 42px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      inset: 0;
+      background: var(--border);
+      border-radius: 24px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    .slider::before {
+      content: "";
+      position: absolute;
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.2s ease;
+    }
+    .switch input:checked + .slider { background: var(--accent); }
+    .switch input:checked + .slider::before { transform: translateX(18px); }
+
+    /* ---------- Save bar ---------- */
+    .save-bar {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .hint {
+      margin: 0;
+      font-size: 0.85rem;
+      color: #7ee787;
+    }
+
+    /* ---------- Section headers with filters ---------- */
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .filter-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+    }
+    .filter-actions label { margin: 0; font-size: 0.85rem; white-space: nowrap; }
+    .filter-actions select { width: auto; padding: 0.4rem 0.6rem; }
+
+    /* ---------- Donation / pending / banned cards ---------- */
+    #donation-history, #instapay-pending, #banned-donors {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1rem;
     }
 
     #donation-history {
       max-height: 800px;
       overflow-y: auto;
-      border: 1px solid #ccc;
-      padding: 10px;
-      margin-top: 1rem;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 16px;
+      padding: 0.25rem;
     }
 
     .donation-card {
-      background: #1e1e1e;
-      padding: 12px;
-      border-radius: 10px;
-      border: 1px solid #555;
+      background: var(--surface-2);
+      padding: 0.9rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
       display: flex;
       flex-direction: column;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       word-break: break-word;
     }
+
+    .donation-card > div > div { margin-bottom: 0.35rem; }
 
     .donation-card img {
       height: 100px;
@@ -74,161 +285,186 @@
       align-self: flex-start;
     }
 
+    .donation-card.paid {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 1px var(--gold);
+    }
+
+    .donation-card.pending-instapay {
+      border-color: #f0883e;
+      box-shadow: 0 0 0 1px #f0883e;
+    }
+
+    .donation-card.banned-donor {
+      border-color: var(--danger);
+      box-shadow: 0 0 0 1px var(--danger);
+    }
+
     .actions {
-      margin-top: 10px;
+      margin-top: 0.75rem;
       display: flex;
-      gap: 8px;
+      gap: 0.5rem;
       flex-wrap: wrap;
     }
-  #clearShownBtn {
-    background-color: #b00020;
-    color: white;
-    border: none;
-    padding: 0.2rem 0.8rem; /* smaller padding */
-    margin-top: 0;          /* remove extra margin */
-    font-size: 0.95rem;     /* smaller font */
-    cursor: pointer;
-    border-radius: 4px;     /* slightly smaller radius */
-    transition: background-color 0.2s ease-in-out;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
 
-  #clearShownBtn:hover {
-    background-color: #d32f2f;
-  }
+    .actions button { padding: 0.4rem 0.7rem; font-size: 0.8rem; }
 
-  .filter-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 1rem;
-}
+    .ban-btn, #clearShownBtn {
+      background: var(--danger);
+      border-color: var(--danger);
+      color: white;
+    }
+    .ban-btn:hover, #clearShownBtn:hover { background: var(--danger-hover); }
 
-.donation-card.paid {
-  border: 2px solid gold;
-  box-shadow: 0 0 10px gold;
-}
-
-#instapay-pending {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 16px;
-  margin-top: 0.5rem;
-}
-
-.donation-card.pending-instapay {
-  border: 2px solid orange;
-}
-
-#banned-donors {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 16px;
-  margin-top: 0.5rem;
-}
-
-.donation-card.banned-donor {
-  border: 2px solid #b00020;
-}
-
-.ban-btn {
-  background-color: #b00020;
-}
-
-.ban-btn:hover {
-  background-color: #d32f2f;
-}
-
-</style>
+    .empty-state {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      padding: 0.5rem 0;
+    }
+  </style>
 
 </head>
 <body>
-  <h2>Overlay Control Panel</h2>
+  <div class="page">
+    <div class="topbar">
+      <div>
+        <h1>🎛️ Overlay Control Panel</h1>
+        <p id="streamer-display"></p>
+      </div>
+      <div class="topbar-actions">
+        <button id="togglePause">Pause</button>
+        <button class="btn-ghost" onclick="logout()">Logout</button>
+      </div>
+    </div>
 
-  <h3>🎥 OBS Browser Source Link</h3>
-  <input type="text" id="obsLink" readonly />
-  <button id="copyObsBtn">📋 Copy OBS Link</button>
+    <div class="grid">
+      <section class="card">
+        <h2>🔗 Your Links</h2>
+        <div class="field">
+          <label for="obsLink">OBS Browser Source</label>
+          <div class="copy-row">
+            <input type="text" id="obsLink" readonly />
+            <button id="copyObsBtn">📋 Copy</button>
+          </div>
+        </div>
+        <div class="field">
+          <label for="donateLink">Public Donation Link</label>
+          <div class="copy-row">
+            <input type="text" id="donateLink" readonly />
+            <button id="copyDonateBtn">📋 Copy</button>
+          </div>
+        </div>
+        <p id="copyStatus" class="hint"></p>
+      </section>
 
-  <h3>💸 Public Donation Link</h3>
-  <input type="text" id="donateLink" readonly />
-  <button id="copyDonateBtn">📋 Copy Donation Link</button>
+      <section class="card">
+        <h2>⚙️ Display Settings</h2>
+        <div class="field">
+          <label for="imageUrl">Custom Default Image URL</label>
+          <input type="text" id="imageUrl" placeholder="https://example.com/image.gif" />
+          <img id="imagePreview" class="image-preview" />
+        </div>
 
-  <p id="copyStatus"></p>
+        <div class="toggle-row">
+          <span>Allow GIFs</span>
+          <label class="switch">
+            <input type="checkbox" id="allowGifsToggle" />
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <span>Enable TTS</span>
+          <label class="switch">
+            <input type="checkbox" id="allowTTSToggle" />
+            <span class="slider"></span>
+          </label>
+        </div>
+                <div class="toggle-row">
+          <span>Require Verified Google Login</span>
+          <label class="switch">
+            <input type="checkbox" id="requireVerifiedDonorToggle" />
+            <span class="slider"></span>
+          </label>
+        </div>
 
-  <button onclick="logout()">Logout</button>
+        <div class="field">
+          <label for="donationModeSelect">Donation Mode</label>
+          <select id="donationModeSelect">
+            <option value="free">Free Only — no payment option shown</option>
+            <option value="optional">Optional — donor chooses to pay or not</option>
+            <option value="paid">Paid Only — amount required</option>
+          </select>
+        </div>
+      </section>
 
-  <p id="streamer-display"></p>
+      <section class="card">
+        <h2>💸 InstaPay</h2>
+        <div class="field">
+          <label for="instapayId">InstaPay ID / Mobile Number</label>
+          <input type="text" id="instapayId" placeholder="e.g. 01001234567 or yourname@instapay" />
+        </div>
 
-  <button id="togglePause">Pause</button>
+        <div class="subsection">
+          <h3>📱 SMS Forwarder Setup</h3>
+          <div class="field">
+            <label for="instapaySmsUrl">Webhook URL (use in your SMS-forwarder app)</label>
+            <div class="copy-row">
+              <input type="text" id="instapaySmsUrl" readonly />
+              <button id="copySmsUrlBtn">📋</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="instapaySmsSecretField">Your Private Secret (Bearer token)</label>
+            <div class="copy-row">
+              <input type="text" id="instapaySmsSecretField" readonly placeholder="Not generated yet" />
+              <button id="copySmsSecretBtn">📋</button>
+              <button id="regenerateSmsSecretBtn">🔄</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
 
-  <label for="imageUrl">Custom Image URL</label>
-  <input type="text" id="imageUrl" placeholder="https://example.com/image.gif" />
-  <img id="imagePreview" style="max-width: 100%; margin-top: 1rem;" />
+    <div class="save-bar">
+      <button id="saveImage" class="btn-primary">💾 Save Settings</button>
+      <p id="status" class="hint"></p>
+    </div>
 
-  <label>
-    <input type="checkbox" id="allowGifsToggle" />
-    Allow GIFs
-  </label>
+    <section class="card">
+      <div class="section-header">
+        <h2>📜 Donation History</h2>
+        <div class="filter-actions">
+          <label for="donationFilter">Filter:</label>
+          <select id="donationFilter">
+            <option value="all">All</option>
+            <option value="waiting">Waiting</option>
+            <option value="shown">Shown</option>
+          </select>
 
-  <label>
-  <input type="checkbox" id="allowTTSToggle" />
-  Enable TTS
-</label>
+          <label for="paidFilter">Type:</label>
+          <select id="paidFilter">
+            <option value="all">All</option>
+            <option value="paid">Paid</option>
+            <option value="free">Free</option>
+          </select>
 
-<label>
-  <input type="checkbox" id="freeModeToggle" />
-  Free Mode (No Payment Required)
-</label>
+          <button id="clearShownBtn">🗑️ Clear All Shown</button>
+        </div>
+      </div>
 
-<label>
-  <input type="checkbox" id="requireVerifiedDonorToggle" />
-  Require Verified Google Login to Donate
-</label>
+      <div id="donation-history"></div>
+    </section>
 
-  <label for="instapayId">InstaPay ID / Mobile Number</label>
-  <input type="text" id="instapayId" placeholder="e.g. 01001234567 or yourname@instapay" />
+    <section class="card">
+      <h2>⏳ Pending InstaPay Donations</h2>
+      <div id="instapay-pending"></div>
+    </section>
 
-  <h3>📱 InstaPay SMS Forwarder Setup</h3>
-  <label for="instapaySmsUrl">Webhook URL (use this in your SMS-forwarder app)</label>
-  <input type="text" id="instapaySmsUrl" readonly />
-  <button id="copySmsUrlBtn">📋 Copy URL</button>
-
-  <label for="instapaySmsSecretField">Your Private Secret (use as the Bearer token)</label>
-  <input type="text" id="instapaySmsSecretField" readonly placeholder="Not generated yet" />
-  <button id="copySmsSecretBtn">📋 Copy Secret</button>
-  <button id="regenerateSmsSecretBtn">🔄 Generate New Secret</button>
-
-  <button id="saveImage">Save</button>
-  <p id="status"></p>
-
-  <div class="filter-actions">
-  <label for="donationFilter"><strong>Filter:</strong></label>
-  <select id="donationFilter">
-    <option value="all">All</option>
-    <option value="waiting">Waiting</option>
-    <option value="shown">Shown</option>
-  </select>
-
-    <label for="paidFilter">Type:</label>
-  <select id="paidFilter">
-    <option value="all">All</option>
-    <option value="paid">Paid</option>
-    <option value="free">Free</option>
-  </select>
-
-  <button id="clearShownBtn">🗑️ Clear All Shown</button>
-</div>
-
-
-  <div id="donation-history"> </div>
-
-  <h3>⏳ Pending InstaPay Donations</h3>
-  <div id="instapay-pending"></div>
-
-  <h3>🚫 Banned Donors</h3>
-  <div id="banned-donors"></div>
+    <section class="card">
+      <h2>🚫 Banned Donors</h2>
+      <div id="banned-donors"></div>
+    </section>
+  </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script src="control.js"></script>

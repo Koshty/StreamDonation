@@ -66,6 +66,13 @@ router.post('/test', async (req, res) => {
     const user = await Streamer.findOne({ username: streamer });
     if (!user) return res.status(404).json({ success: false, error: 'Streamer not found' });
 
+    if (user.donationMode === 'paid') {
+      return res.status(400).json({
+        success: false,
+        error: '❌ This streamer requires a donation amount — use the amount field.'
+      });
+    }
+
     if (user.requireVerifiedDonor && !verified) {
       return res.status(400).json({
         success: false,

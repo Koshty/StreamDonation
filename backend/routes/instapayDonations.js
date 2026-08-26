@@ -6,6 +6,7 @@ const BannedDonor = require('../models/BannedDonor');
 const authMiddleware = require('../middleware/authMiddleware');
 const { getMatchedProfanities, normalize } = require('../Utils/profanity');
 const { verifyDonorToken } = require('../Utils/donorToken');
+const generateTTS = require('../Utils/generateTTS');
 
 const RESERVATION_WINDOW_MINUTES = Number(process.env.INSTAPAY_RESERVATION_WINDOW_MINUTES) || 25;
 
@@ -89,7 +90,21 @@ async function reserveDonation({ requestedAmount, streamer, username, message, i
   throw err;
 }
 
-function emitPaidDonation(req, donation, streamer) {
+// TTS is generated here, at confirmed-paid time — not at reservation time, since a
+// reservation might expire unfulfilled and that would just be wasted/orphaned audio.
+async function emitPaidDonation(req, donation, streamer) {
+  if (streamer.allowTTS && donation.message && !donation.audioUrl) {
+    try {
+      const audioUrl = await generateTTS({ message: donation.message, donationId: donation._id });
+      if (audioUrl) {
+        donation.audioUrl = audioUrl;
+        await donation.save();
+      }
+    } catch (err) {
+      console.warn('🛑 TTS generation failed for InstaPay donation:', err.message);
+    }
+  }
+
   const io = req.app.get('io');
   const buffer = req.app.get('donationBuffer');
   const addToQueue = req.app.get('addToQueue');
@@ -155,6 +170,9 @@ router.post('/start', async (req, res) => {
     const streamerDoc = await Streamer.findOne({ username: streamer });
     if (!streamerDoc) {
       return res.status(404).json({ success: false, error: 'Streamer not found' });
+    }
+    if (streamerDoc.donationMode === 'free') {
+      return res.status(400).json({ success: false, error: 'This streamer is not accepting paid donations right now.' });
     }
     if (!streamerDoc.instapayId) {
       return res.status(400).json({ success: false, error: 'Streamer has not configured InstaPay yet.' });
@@ -263,7 +281,7 @@ router.post('/sms/:streamer', async (req, res) => {
     donation.smsRawText = text;
     await donation.save();
 
-    emitPaidDonation(req, donation, streamerDoc);
+    await emitPaidDonation(req, donation, streamerDoc);
 
     res.status(200).json({ success: true, donationId: donation._id });
   } catch (err) {
@@ -299,7 +317,7 @@ router.post('/confirm/:id', authMiddleware, async (req, res) => {
     donation.matchedVia = 'manual';
     await donation.save();
 
-    emitPaidDonation(req, donation, streamerDoc);
+    await emitPaidDonation(req, donation, streamerDoc);
 
     res.json({ success: true });
   } catch (err) {
