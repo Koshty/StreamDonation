@@ -42,6 +42,7 @@ freeMode: {
   default: true
 },
 instapayId: { type: String, default: '' },
+instapaySmsSecret: { type: String, default: '' },
 requireVerifiedDonor: { type: Boolean, default: false }
 
 

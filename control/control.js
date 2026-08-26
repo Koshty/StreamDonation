@@ -43,6 +43,9 @@ const instapayIdInput = document.getElementById('instapayId');
 const pendingContainer = document.getElementById('instapay-pending');
 const requireVerifiedDonorCheckbox = document.getElementById('requireVerifiedDonorToggle');
 const bannedContainer = document.getElementById('banned-donors');
+const instapaySmsUrlInput = document.getElementById('instapaySmsUrl');
+const instapaySmsSecretField = document.getElementById('instapaySmsSecretField');
+const regenerateSmsSecretBtn = document.getElementById('regenerateSmsSecretBtn');
 
 let isPaused = false;
 
@@ -62,6 +65,9 @@ fetch(`/api/streamer/${streamer}/config`, {
     freeModeCheckbox.checked = !!data.freeMode;
     instapayIdInput.value = data.instapayId || '';
     requireVerifiedDonorCheckbox.checked = !!data.requireVerifiedDonor;
+    instapaySmsUrlInput.value = `${window.location.origin}/api/instapay/sms/${streamer}`;
+    instapaySmsSecretField.value = data.instapaySmsSecret || '';
+    instapaySmsSecretField.placeholder = data.instapaySmsSecret ? '' : 'Not generated yet';
     toggleBtn.textContent = isPaused ? 'Resume' : 'Pause';
   })
   .catch(() => {
@@ -81,12 +87,13 @@ fetch(`/api/streamer/${streamer}/token`, {
     }
   });
 
-function copyToClipboard(elementId) {
+function copyToClipboard(elementId, label) {
   const input = document.getElementById(elementId);
   if (!input) return;
+  const defaultLabel = elementId === 'obsLink' ? 'OBS link' : elementId === 'donateLink' ? 'donation link' : 'text';
   navigator.clipboard.writeText(input.value)
     .then(() => {
-      copyStatus.textContent = `✅ Copied ${elementId === 'obsLink' ? 'OBS' : 'donation'} link!`;
+      copyStatus.textContent = `✅ Copied ${label || defaultLabel}!`;
       setTimeout(() => copyStatus.textContent = '', 2000);
     })
     .catch(() => copyStatus.textContent = '❌ Failed to copy.');
@@ -94,6 +101,24 @@ function copyToClipboard(elementId) {
 
 document.getElementById('copyObsBtn').addEventListener('click', () => copyToClipboard('obsLink'));
 document.getElementById('copyDonateBtn').addEventListener('click', () => copyToClipboard('donateLink'));
+document.getElementById('copySmsUrlBtn').addEventListener('click', () => copyToClipboard('instapaySmsUrl', 'webhook URL'));
+document.getElementById('copySmsSecretBtn').addEventListener('click', () => copyToClipboard('instapaySmsSecretField', 'secret'));
+
+regenerateSmsSecretBtn.addEventListener('click', async () => {
+  if (instapaySmsSecretField.value && !confirm('Generate a new secret? Your SMS-forwarder app will need updating with it, or InstaPay confirmations will stop working.')) return;
+  const res = await fetch(`/api/streamer/${streamer}/instapay-sms-secret/regenerate`, {
+    method: 'POST',
+    headers: { 'Authorization': 'Bearer ' + token }
+  });
+  const data = await res.json();
+  if (data.success) {
+    instapaySmsSecretField.value = data.instapaySmsSecret;
+    copyStatus.textContent = '✅ New secret generated — update your SMS-forwarder app with it.';
+    setTimeout(() => copyStatus.textContent = '', 4000);
+  } else {
+    alert('❌ Failed to generate a new secret.');
+  }
+});
 
 function logout() {
   localStorage.removeItem('token');

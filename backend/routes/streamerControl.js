@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
 const Streamer = require('../models/Streamer');
 const authMiddleware = require('../middleware/authMiddleware');
 
@@ -22,6 +23,7 @@ router.get('/:streamer/config', authMiddleware, async (req, res) => {
       allowTTS: user.allowTTS  ,
       freeMode: user.freeMode  ,
       instapayId: user.instapayId,
+      instapaySmsSecret: user.instapaySmsSecret,
       requireVerifiedDonor: user.requireVerifiedDonor
     });
   } catch (err) {
@@ -84,6 +86,30 @@ router.post('/:streamer/settings', authMiddleware, async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('[SETTINGS ERROR]', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ✅ POST to generate/regenerate this streamer's private InstaPay SMS secret
+router.post('/:streamer/instapay-sms-secret/regenerate', authMiddleware, async (req, res) => {
+  const { streamer } = req.params;
+
+  if (req.user.username !== streamer) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  try {
+    const newSecret = crypto.randomBytes(24).toString('hex');
+    const user = await Streamer.findOneAndUpdate(
+      { username: streamer },
+      { instapaySmsSecret: newSecret },
+      { new: true }
+    );
+    if (!user) return res.status(404).json({ error: 'Streamer not found' });
+
+    res.json({ success: true, instapaySmsSecret: user.instapaySmsSecret });
+  } catch (err) {
+    console.error('[INSTAPAY SMS SECRET REGENERATE ERROR]', err);
     res.status(500).json({ error: 'Server error' });
   }
 });

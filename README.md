@@ -23,7 +23,6 @@ A donation/message overlay for streamers, with an OBS browser-source overlay, a 
    GIPHY_API_KEY=<your Giphy API key>
    MONGO_URI=<your MongoDB connection string>
    JWT_SECRET=<any random string>
-   INSTAPAY_SMS_SECRET=<any random string, used to authenticate the SMS-forwarder webhook>
    INSTAPAY_RESERVATION_WINDOW_MINUTES=25
    TTS_ARABIC_VOICE=ar-EG-SalmaNeural
    TTS_ENGLISH_VOICE=en-US-AriaNeural
@@ -55,12 +54,14 @@ To stream this to viewers (rather than just testing on `localhost`), tunnel port
 There's no hosted payment gateway — a donor sends an InstaPay transfer manually from their own banking app for a specific reduced amount the form gives them (e.g. 49.97 instead of 50), which the app uses to auto-match the transfer once your phone receives the confirmation SMS. That requires an SMS-forwarding app on the phone that receives the payment notifications, configured to POST each SMS's text to:
 
 ```
-POST /api/instapay/sms
-Authorization: Bearer <INSTAPAY_SMS_SECRET>
+POST /api/instapay/sms/<your-username>
+Authorization: Bearer <your InstaPay SMS secret, from the control panel>
 Content-Type: application/json
 
 { "text": "<the SMS text>" }
 ```
+
+Each streamer has their own private secret (generate/view it from the control panel's InstaPay section) — this keeps SMS confirmations scoped to the right streamer's own pending donations if more than one streamer uses InstaPay on the same deployment.
 
 Until that's set up, pending InstaPay donations can be confirmed manually from the control panel's "Pending InstaPay Donations" section.
 

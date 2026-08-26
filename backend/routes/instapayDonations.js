@@ -206,13 +206,22 @@ router.post('/start', async (req, res) => {
   }
 });
 
-// POST /api/instapay/sms — SMS-forwarder webhook (shared-secret auth)
-router.post('/sms', async (req, res) => {
+// POST /api/instapay/sms/:streamer — SMS-forwarder webhook, scoped to one streamer's
+// own per-account secret. Both the identity check AND the donation-matching query are
+// scoped to this streamer, so a payment confirmed on one streamer's phone can never be
+// misattributed to a different streamer's pending donation (matters once more than one
+// streamer uses InstaPay on the same deployment).
+router.post('/sms/:streamer', async (req, res) => {
+  const { streamer } = req.params;
   const { text, secret } = req.body || {};
   const headerToken = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   const providedSecret = headerToken || secret || '';
 
-  if (!process.env.INSTAPAY_SMS_SECRET || providedSecret !== process.env.INSTAPAY_SMS_SECRET) {
+  const streamerDoc = await Streamer.findOne({ username: streamer });
+  if (!streamerDoc) {
+    return res.status(404).json({ success: false, error: 'Streamer not found' });
+  }
+  if (!streamerDoc.instapaySmsSecret || providedSecret !== streamerDoc.instapaySmsSecret) {
     return res.status(401).json({ success: false, error: 'Unauthorized' });
   }
 
@@ -221,7 +230,7 @@ router.post('/sms', async (req, res) => {
   }
 
   const parsedAmount = parseAmountFromSms(text);
-  console.log('[📩 InstaPay SMS]', { text, parsedAmount });
+  console.log('[📩 InstaPay SMS]', { streamer, text, parsedAmount });
 
   if (parsedAmount === null) {
     return res.status(200).json({ success: false, reason: 'unparseable' });
@@ -231,6 +240,7 @@ router.post('/sms', async (req, res) => {
     await expireStaleReservations();
 
     const donation = await Donation.findOne({
+      streamerToken: streamerDoc.overlayToken,
       paymentMethod: 'instapay',
       instapayStatus: 'reserved',
       reservedAmount: parsedAmount,
@@ -238,13 +248,8 @@ router.post('/sms', async (req, res) => {
     }).sort({ reservedAt: 1 });
 
     if (!donation) {
-      console.log('[InstaPay SMS] No pending reservation for amount', parsedAmount);
+      console.log('[InstaPay SMS] No pending reservation for amount', parsedAmount, 'for streamer', streamer);
       return res.status(200).json({ success: false, reason: 'no_match' });
-    }
-
-    const streamerDoc = await Streamer.findOne({ overlayToken: donation.streamerToken });
-    if (!streamerDoc) {
-      return res.status(200).json({ success: false, reason: 'streamer_not_found' });
     }
 
     donation.instapayStatus = 'paid';

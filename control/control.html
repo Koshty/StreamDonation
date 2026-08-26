@@ -190,6 +190,15 @@
   <label for="instapayId">InstaPay ID / Mobile Number</label>
   <input type="text" id="instapayId" placeholder="e.g. 01001234567 or yourname@instapay" />
 
+  <h3>📱 InstaPay SMS Forwarder Setup</h3>
+  <label for="instapaySmsUrl">Webhook URL (use this in your SMS-forwarder app)</label>
+  <input type="text" id="instapaySmsUrl" readonly />
+  <button id="copySmsUrlBtn">📋 Copy URL</button>
+
+  <label for="instapaySmsSecretField">Your Private Secret (use as the Bearer token)</label>
+  <input type="text" id="instapaySmsSecretField" readonly placeholder="Not generated yet" />
+  <button id="copySmsSecretBtn">📋 Copy Secret</button>
+  <button id="regenerateSmsSecretBtn">🔄 Generate New Secret</button>
 
   <button id="saveImage">Save</button>
   <p id="status"></p>
