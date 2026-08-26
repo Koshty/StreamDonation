@@ -41,13 +41,16 @@ async function expireStaleReservations() {
   );
 }
 
-// Never suggests sending MORE than requested — only ever a smaller, unique amount.
+// Never suggests sending MORE than requested. Tries the exact requested amount
+// first — it only gets reduced at all if that amount is already taken by another
+// pending reservation, so a donor only ever sees an odd amount when it's actually
+// needed to disambiguate, not by default.
 async function reserveDonation({ requestedAmount, streamer, username, message, imageUrl, donorFields = {} }) {
   const requestedCents = Math.round(requestedAmount * 100);
   const maxReductionCents = Math.min(100, Math.max(10, Math.round(requestedCents * 0.02)));
 
   for (let pass = 0; pass < 2; pass++) {
-    for (let deltaCents = 1; deltaCents <= maxReductionCents; deltaCents++) {
+    for (let deltaCents = 0; deltaCents <= maxReductionCents; deltaCents++) {
       const candidateCents = requestedCents - deltaCents;
       if (candidateCents <= 0) break;
       const candidateAmount = candidateCents / 100;
