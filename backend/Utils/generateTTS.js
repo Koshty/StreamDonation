@@ -29,10 +29,15 @@ async function generateTTS({ message, donationId }) {
   if (!/[.!?]$/.test(text)) text += ".";
 
   const voice = detectLanguage(text) === "ar" ? ARABIC_VOICE : ENGLISH_VOICE;
-  const outputPath = path.join(__dirname, `../public/audio/${donationId}.mp3`);
+  const outputDir = path.join(__dirname, "../public/audio");
+  const outputPath = path.join(outputDir, `${donationId}.mp3`);
   const publicUrl = `/audio/${donationId}.mp3`;
 
   try {
+    // Git doesn't track empty directories, so a fresh deploy checkout won't have
+    // this folder at all even though it exists locally — create it defensively.
+    await fs.promises.mkdir(outputDir, { recursive: true });
+
     const tts = new MsEdgeTTS();
     await tts.setMetadata(voice, OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3);
     const { audioStream } = tts.toStream(escapeXml(text));
