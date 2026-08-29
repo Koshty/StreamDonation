@@ -1,4 +1,9 @@
 const YOUTUBE_ICON_SVG = '<svg viewBox="0 0 24 17" width="26" height="18" style="vertical-align:middle;margin-right:6px;"><path fill="#FF0000" d="M23.5 2.6A3 3 0 0 0 21.4.5C19.5 0 12 0 12 0S4.5 0 2.6.5A3 3 0 0 0 .5 2.6 31 31 0 0 0 0 8.3a31 31 0 0 0 .5 5.7 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1 31 31 0 0 0 .5-5.7 31 31 0 0 0-.5-5.7z"/><path fill="#fff" d="M9.6 11.8V4.8l6.3 3.5-6.3 3.5z"/></svg>';
+const TWITCH_ICON_SVG = '<svg viewBox="0 0 24 24" width="20" height="20" style="vertical-align:middle;margin-right:6px;"><path fill="#9146FF" d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 10.857l-3.428 3.429h-3.429l-3 3v-3H6.857V1.714h13.714Z"/></svg>';
+
+function platformIconFor(data) {
+  return data.donorPlatform === 'twitch' ? TWITCH_ICON_SVG : YOUTUBE_ICON_SVG;
+}
 
 (async () => {
   const urlParams = new URLSearchParams(window.location.search);
@@ -99,13 +104,13 @@ const YOUTUBE_ICON_SVG = '<svg viewBox="0 0 24 17" width="26" height="18" style=
 
         // ✨ HEADLINE TEXT: "user donated [amount]" IF PAID, ELSE "user says"
         // Built as real DOM nodes (not string concatenation) so the untrusted
-        // username/message text stays safely in a text node — the YouTube icon
+        // username/message text stays safely in a text node — the platform icon
         // markup is fixed, code-authored SVG, never derived from donor input.
         username.innerHTML = '';
         if (data.donorVerified) {
           const badge = document.createElement('span');
           badge.className = 'verified-badge';
-          badge.innerHTML = YOUTUBE_ICON_SVG;
+          badge.innerHTML = platformIconFor(data);
           username.appendChild(badge);
         }
 

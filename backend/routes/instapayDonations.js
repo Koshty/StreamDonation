@@ -119,7 +119,7 @@ async function emitPaidDonation(req, donation, streamer) {
     amount: donation.amount,
     isPaid: true,
     ...(donation.audioUrl ? { audioUrl: donation.audioUrl } : {}),
-    ...(donation.donorVerified ? { donorVerified: true, donorAvatarUrl: donation.donorAvatarUrl } : {})
+    ...(donation.donorVerified ? { donorVerified: true, donorPlatform: donation.donorPlatform, donorAvatarUrl: donation.donorAvatarUrl } : {})
   };
 
   if (!buffer[streamer.username]) buffer[streamer.username] = [];

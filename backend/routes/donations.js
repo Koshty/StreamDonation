@@ -139,7 +139,7 @@ router.post('/test', async (req, res) => {
       delayed: user.paused,
       timestamp,
       ...(audioUrl ? { audioUrl } : {}),
-      ...(verified ? { donorVerified: true, donorAvatarUrl: donorPayload.picture } : {})
+      ...(verified ? { donorVerified: true, donorPlatform: donorPayload.platform, donorAvatarUrl: donorPayload.picture } : {})
     };
 
     addToQueue(streamer, donation);
