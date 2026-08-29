@@ -93,9 +93,15 @@ async function reserveDonation({ requestedAmount, streamer, username, message, i
 // TTS is generated here, at confirmed-paid time — not at reservation time, since a
 // reservation might expire unfulfilled and that would just be wasted/orphaned audio.
 async function emitPaidDonation(req, donation, streamer) {
-  if (streamer.allowTTS && donation.message && !donation.audioUrl) {
+  if (streamer.allowTTS && !donation.audioUrl) {
     try {
-      const audioUrl = await generateTTS({ message: donation.message, donationId: donation._id });
+      const audioUrl = await generateTTS({
+        username: donation.username,
+        message: donation.message,
+        isPaid: true,
+        amount: donation.amount,
+        donationId: donation._id
+      });
       if (audioUrl) {
         donation.audioUrl = audioUrl;
         await donation.save();

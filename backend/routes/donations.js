@@ -121,7 +121,7 @@ router.post('/test', async (req, res) => {
     let audioUrl = null;
     if (user.allowTTS && message) {
       try {
-        audioUrl = await generateTTS({ message, donationId: newDonation._id });
+        audioUrl = await generateTTS({ username, message, isPaid: false, donationId: newDonation._id });
         if (audioUrl) {
           newDonation.audioUrl = audioUrl;
           await newDonation.save();

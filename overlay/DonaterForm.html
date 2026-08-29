@@ -437,7 +437,13 @@
 
     donationForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (submitBtn.disabled) return; // guard against a double-click firing this twice
 
+      submitBtn.disabled = true;
+      const originalSubmitLabel = submitBtn.textContent;
+      submitBtn.textContent = 'Sending...';
+
+      try {
       if (!username || !overlayToken) {
         setStatus('Streamer not resolved. Try again.', 'error');
         return;
@@ -511,8 +517,20 @@
       const data = await res.json();
       if (data.success) {
         setStatus(data.message || 'Message sent!', 'success');
+        // Clear the form so a stray extra click can't resend the same content.
+        document.getElementById('message').value = '';
+        autoResizeMessage();
+        amountInput.value = '';
+        imageInput.value = '';
+        giphySearchInput.value = '';
+        giphyResults.innerHTML = '';
+        clearGifBtn.style.display = 'none';
       } else {
         setStatus(data.error || 'Something went wrong.', 'error');
+      }
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalSubmitLabel;
       }
     });
 

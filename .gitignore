@@ -1,3 +1,7 @@
+# Generated TTS audio (ephemeral per-donation, auto-deleted after being shown)
+backend/public/audio/*
+!backend/public/audio/.gitkeep
+
 # Logs
 logs
 *.log

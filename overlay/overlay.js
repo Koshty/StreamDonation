@@ -47,6 +47,9 @@ function platformIconFor(data) {
 
     console.log('[Overlay] ✅ DOM elements found. Ready to display donations.');
 
+    const notificationSound = new Audio('/overlay/notification.mp3');
+    notificationSound.volume = 0.9;
+
     let isPaused = false;
     let isDisplaying = false;
     const queue = [];
@@ -98,6 +101,82 @@ function platformIconFor(data) {
         shownTimestamps.add(data.timestamp);
 
         console.log('[Overlay] ✅ Displaying donation:', data);
+
+        // Advance to the next queued donation only once BOTH conditions are met:
+        // the chime+TTS have genuinely finished playing (not a fixed guess at their
+        // length), AND a minimum readable display time has elapsed (so a short/silent
+        // donation doesn't flash by instantly). Whichever finishes last wins.
+        let audioFullyDone = false;
+        let minTimeElapsed = false;
+
+        function tryAdvance() {
+          if (!(audioFullyDone && minTimeElapsed)) return;
+          container.classList.remove('visible');
+          container.classList.add('hidden');
+          setTimeout(() => {
+            container.classList.remove('hidden');
+            isDisplaying = false;
+
+            // ✅ Mark as shown in DB
+            if (data._id) {
+              fetch(`/api/donations/mark-shown/${data._id}`, {
+                method: 'POST'
+              }).then(res => res.json())
+                .then(result => {
+                  console.log('[Overlay] ✅ Marked donation as shown:', result);
+                }).catch(err => {
+                  console.error('[Overlay] ❌ Failed to mark donation as shown:', err);
+                });
+            }
+
+            if (!isPaused && queue.length > 0) {
+              showNextDonation();
+            } else {
+              console.log('[Overlay] ⏸️ Stopping after current donation due to pause.');
+            }
+          }, 1000);
+        }
+
+        function markAudioDone() {
+          if (audioFullyDone) return;
+          audioFullyDone = true;
+          tryAdvance();
+        }
+
+        // Chime plays first, then the TTS voice starts once it finishes —
+        // if the chime is blocked/fails, don't let that silence the TTS too.
+        let ttsStarted = false;
+        function startTtsPlayback() {
+          if (ttsStarted) return;
+          ttsStarted = true;
+          const audio = document.getElementById('donation-audio');
+          if (data.audioUrl && audio) {
+            audio.muted = false;
+            audio.volume = 1.0;
+            audio.src = data.audioUrl;
+            audio.onended = markAudioDone;
+            audio.onerror = markAudioDone;
+            audio.play()
+              .then(() => console.log('[Overlay] ✅ Audio playback started'))
+              .catch(err => {
+                console.warn('[Overlay] ⚠️ Audio play blocked or failed:', err);
+                markAudioDone();
+              });
+          } else {
+            markAudioDone(); // nothing to wait for — no TTS audio for this donation
+          }
+        }
+        notificationSound.currentTime = 0;
+        notificationSound.onended = startTtsPlayback;
+        notificationSound.play().catch(err => {
+          console.warn('[Overlay] ⚠️ Notification sound blocked or failed:', err);
+          startTtsPlayback();
+        });
+
+        setTimeout(() => {
+          minTimeElapsed = true;
+          tryAdvance();
+        }, 8000);
 
         // ✨ GOLD FRAME TOGGLE FOR PAID DONATIONS
         container.classList.toggle('paid', !!data.isPaid);
@@ -152,52 +231,11 @@ function platformIconFor(data) {
         void container.offsetWidth;
         container.classList.add('delay-visible');
 
-        const audio = document.getElementById('donation-audio');
-        if (data.audioUrl && audio) {
-          audio.muted = false;           // ✅ Unmute explicitly
-          audio.volume = 1.0;            // ✅ Max volume
-          audio.src = data.audioUrl;
-
-          audio.play()
-            .then(() => {
-              console.log('[Overlay] ✅ Audio playback started');
-            })
-            .catch(err => {
-              console.warn('[Overlay] ⚠️ Audio play blocked or failed:', err);
-            });
-        }
-
         setTimeout(() => {
           container.classList.remove('delay-visible');
           container.classList.add('visible');
         }, 1000);
 
-        setTimeout(() => {
-          container.classList.remove('visible');
-          container.classList.add('hidden');
-          setTimeout(() => {
-            container.classList.remove('hidden');
-            isDisplaying = false;
-
-            // ✅ Mark as shown in DB
-            if (data._id) {
-              fetch(`/api/donations/mark-shown/${data._id}`, {
-                method: 'POST'
-              }).then(res => res.json())
-                .then(result => {
-                  console.log('[Overlay] ✅ Marked donation as shown:', result);
-                }).catch(err => {
-                  console.error('[Overlay] ❌ Failed to mark donation as shown:', err);
-                });
-            }
-
-            if (!isPaused && queue.length > 0) {
-              showNextDonation();
-            } else {
-              console.log('[Overlay] ⏸️ Stopping after current donation due to pause.');
-            }
-          }, 1000);
-        }, 8000);
         return;
       }
 

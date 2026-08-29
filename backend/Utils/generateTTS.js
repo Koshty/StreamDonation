@@ -22,13 +22,21 @@ function escapeXml(text) {
     .replace(/'/g, "&apos;");
 }
 
-async function generateTTS({ message, donationId }) {
-  if (!message || !message.trim()) return null;
+async function generateTTS({ username, message, isPaid, amount, donationId }) {
+  const trimmedMessage = (message || "").trim();
+  if (!trimmedMessage && !isPaid) return null;
 
-  let text = message.trim();
-  if (!/[.!?]$/.test(text)) text += ".";
+  const name = (username || "Anonymous").trim();
+  const lang = detectLanguage(trimmedMessage || name);
 
-  const voice = detectLanguage(text) === "ar" ? ARABIC_VOICE : ENGLISH_VOICE;
+  const intro = isPaid
+    ? (lang === "ar" ? `${name} تبرع بمبلغ ${amount} جنيه` : `${name} donated ${amount} pounds`)
+    : (lang === "ar" ? `${name} يقول` : `${name} says`);
+
+  let text = trimmedMessage ? `${intro}: ${trimmedMessage}` : `${intro}.`;
+  if (!/[.!?؟]$/.test(text)) text += ".";
+
+  const voice = lang === "ar" ? ARABIC_VOICE : ENGLISH_VOICE;
   const outputDir = path.join(__dirname, "../public/audio");
   const outputPath = path.join(outputDir, `${donationId}.mp3`);
   const publicUrl = `/audio/${donationId}.mp3`;
