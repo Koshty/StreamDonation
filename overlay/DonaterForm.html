@@ -34,6 +34,21 @@
       font-size: 0.9rem;
       margin-bottom: 0.5rem;
     }
+    #twitchSignInBtn {
+      display: none;
+      background: #9146FF;
+      color: white;
+      border: none;
+      padding: 0.7rem 1.5rem;
+      border-radius: 20px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      margin-bottom: 1rem;
+    }
+    #twitchSignInBtn:hover {
+      background: #7d2ff2;
+    }
     #giphyResults img.selected {
       outline: 3px solid var(--accent);
     }
@@ -59,6 +74,33 @@
       margin-top: 1rem;
       font-size: 0.9rem;
       color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .icon {
+      width: 16px;
+      height: 16px;
+      flex-shrink: 0;
+      vertical-align: -3px;
+    }
+    #status {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    #status:empty { display: none; }
+    #status.success { color: #3fb950; }
+    #status.error { color: var(--danger); }
+    #verifiedDonorInfo span {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    .form-actions-row button, .copy-row button, #instapayRetryBtn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
     }
   </style>
 </head>
@@ -67,9 +109,10 @@
     <h2>Send a Donation Message</h2>
     <p id="requireVerifiedHint" style="display:none;">This streamer requires a verified sign-in to donate.</p>
     <div id="googleSignInBtn"></div>
+    <button type="button" id="twitchSignInBtn">Sign in with Twitch</button>
     <div id="verifiedDonorInfo" style="display:none;">
       <img id="verifiedAvatar" src="" alt="" />
-      <span>✅ Verified as <strong id="verifiedName"></strong></span>
+      <span><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:#3fb950;"><polyline points="20 6 9 17 4 12"></polyline></svg> Verified as <strong id="verifiedName"></strong></span>
       <button type="button" id="signOutBtn">Not you?</button>
     </div>
 
@@ -96,7 +139,7 @@
       <input type="hidden" id="imageUrl" />
       <div class="form-actions-row">
         <button type="submit">Send</button>
-        <button id="clearGifBtn" type="button" style="display:none;">❌ Clear GIF</button>
+        <button id="clearGifBtn" type="button" style="display:none;"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg> Clear GIF</button>
       </div>
     </form>
     <p id="status"></p>
@@ -108,17 +151,17 @@
       <label>Send exactly</label>
       <div class="copy-row">
         <input type="text" id="instapayAmount" readonly />
-        <button type="button" id="copyAmountBtn">📋 Copy</button>
+        <button type="button" id="copyAmountBtn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy</button>
       </div>
 
       <label>To InstaPay ID / Mobile Number</label>
       <div class="copy-row">
         <input type="text" id="instapayIdField" readonly />
-        <button type="button" id="copyIdBtn">📋 Copy</button>
+        <button type="button" id="copyIdBtn"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copy</button>
       </div>
 
-      <p id="instapayStatusText">⏳ Waiting for your payment to be confirmed...</p>
-      <button type="button" id="instapayRetryBtn" style="display:none;">🔄 Try Again</button>
+      <p id="instapayStatusText"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Waiting for your payment to be confirmed...</p>
+      <button type="button" id="instapayRetryBtn" style="display:none;"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg> Try Again</button>
     </div>
   </div>
 
@@ -129,10 +172,12 @@
     let overlayToken = '';
     let GIPHY_API_KEY = '';
     let GOOGLE_CLIENT_ID = '';
+    let TWITCH_CLIENT_ID = '';
     let allowGifs = true;
     let defaultImageUrl = '';
     let donationMode = 'free'; // 'free' | 'optional' | 'paid'
     let requireVerifiedDonor = false;
+    let authProvider = 'google';
     let donorToken = null;
     let verifiedName = null;
 
@@ -150,11 +195,25 @@
     const usernameField = document.getElementById('username-field');
     const requireVerifiedHint = document.getElementById('requireVerifiedHint');
     const googleSignInBtn = document.getElementById('googleSignInBtn');
+    const twitchSignInBtn = document.getElementById('twitchSignInBtn');
     const verifiedDonorInfo = document.getElementById('verifiedDonorInfo');
     const verifiedAvatar = document.getElementById('verifiedAvatar');
     const verifiedNameEl = document.getElementById('verifiedName');
     const signOutBtn = document.getElementById('signOutBtn');
     const submitBtn = donationForm.querySelector('button[type="submit"]');
+
+    const ICON_PATHS = {
+      check: '<polyline points="20 6 9 17 4 12"></polyline>',
+      x: '<circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line>',
+      clock: '<circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline>'
+    };
+    function icon(name) {
+      return `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICON_PATHS[name] || ''}</svg>`;
+    }
+    function setStatus(text, type) {
+      statusText.className = type || '';
+      statusText.innerHTML = text ? `${icon(type === 'error' ? 'x' : 'check')} ${text}` : '';
+    }
 
     function autoResizeMessage() {
       messageInput.style.height = 'auto';
@@ -198,8 +257,17 @@
       donationForm.style.display = (requireVerifiedDonor && !donorToken) ? 'none' : 'block';
     }
 
+    function initSignInUI() {
+      if (!requireVerifiedDonor) return; // only show sign-in when it's actually needed
+      if (authProvider === 'twitch') {
+        twitchSignInBtn.style.display = 'inline-block';
+      } else {
+        tryInitGoogleSignIn();
+      }
+    }
+
     function tryInitGoogleSignIn() {
-      if (!requireVerifiedDonor) return; // only show Google sign-in when it's actually needed
+      if (authProvider !== 'google' || !requireVerifiedDonor) return;
       if (!GOOGLE_CLIENT_ID || typeof google === 'undefined' || !google.accounts) return;
       google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
@@ -214,6 +282,20 @@
       });
     }
     window.__gsiLoaded = tryInitGoogleSignIn;
+
+    twitchSignInBtn.addEventListener('click', () => {
+      if (!TWITCH_CLIENT_ID) {
+        setStatus('Twitch sign-in is not configured for this streamer.', 'error');
+        return;
+      }
+      const callbackUrl = `${window.location.origin}/overlay/twitch-callback.html`;
+      const authorizeUrl = 'https://id.twitch.tv/oauth2/authorize'
+        + `?client_id=${encodeURIComponent(TWITCH_CLIENT_ID)}`
+        + `&redirect_uri=${encodeURIComponent(callbackUrl)}`
+        + '&response_type=token&scope='
+        + `&state=${encodeURIComponent(username)}`;
+      window.location.href = authorizeUrl;
+    });
 
     async function handleGoogleCredential(response) {
       try {
@@ -230,17 +312,18 @@
           showVerifiedState(data.name, data.picture);
         } else {
           donorToken = null;
-          statusText.textContent = '❌ ' + (data.error || 'Google sign-in failed.');
+          setStatus(data.error || 'Google sign-in failed.', 'error');
         }
       } catch (err) {
         console.error('[Google] verify failed:', err);
-        statusText.textContent = '❌ Google sign-in failed. Please try again.';
+        setStatus('Google sign-in failed. Please try again.', 'error');
       }
       updateSubmitState();
     }
 
     function showVerifiedState(name, picture) {
       googleSignInBtn.style.display = 'none';
+      twitchSignInBtn.style.display = 'none';
       usernameField.style.display = 'none';
       verifiedDonorInfo.style.display = 'flex';
       verifiedAvatar.src = picture || '';
@@ -251,14 +334,14 @@
       donorToken = null;
       verifiedName = null;
       clearSavedDonorToken();
-      googleSignInBtn.style.display = 'block';
       usernameField.style.display = 'block';
       verifiedDonorInfo.style.display = 'none';
+      initSignInUI();
       updateSubmitState();
     });
 
     if (!username) {
-      statusText.textContent = '❌ Invalid link. Streamer missing.';
+      setStatus('Invalid link. Streamer missing.', 'error');
       donationForm.style.display = 'none';
     } else {
       fetch(`/api/donations/resolve/${username}`)
@@ -278,10 +361,12 @@
           console.log('CONFIG:', config); // Add this line
           GIPHY_API_KEY = env.giphyKey;
           GOOGLE_CLIENT_ID = env.googleClientId || '';
+          TWITCH_CLIENT_ID = env.twitchClientId || '';
           allowGifs = config.allowGifs;
           defaultImageUrl = config.defaultImageUrl;
           donationMode = config.donationMode || 'free';
           requireVerifiedDonor = config.requireVerifiedDonor === true;
+          authProvider = config.authProvider === 'twitch' ? 'twitch' : 'google';
           if (!allowGifs) gifSection.style.display = 'none';
           amountSection.style.display = donationMode === 'free' ? 'none' : 'block';
           if (donationMode === 'paid') {
@@ -305,11 +390,11 @@
           }
 
           updateSubmitState();
-          tryInitGoogleSignIn();
+          initSignInUI();
         })
         .catch(err => {
           console.error('[Donation] Streamer resolution failed:', err);
-          statusText.textContent = '❌ Invalid or expired link.';
+          setStatus('Invalid or expired link.', 'error');
           donationForm.style.display = 'none';
         });
     }
@@ -354,12 +439,12 @@
       e.preventDefault();
 
       if (!username || !overlayToken) {
-        statusText.textContent = '❌ Streamer not resolved. Try again.';
+        setStatus('Streamer not resolved. Try again.', 'error');
         return;
       }
 
       if (requireVerifiedDonor && !donorToken) {
-        statusText.textContent = '❌ Please sign in with Google to donate.';
+        setStatus('Please sign in to donate.', 'error');
         return;
       }
 
@@ -379,7 +464,7 @@
 
       if (wantsToPay) {
         if (!hasValidAmount) {
-          statusText.textContent = '❌ Please enter a valid amount.';
+          setStatus('Please enter a valid amount.', 'error');
           return;
         }
 
@@ -400,14 +485,14 @@
         if (data.success) {
           showInstapayPanel(data);
         } else {
-          statusText.textContent = '❌ ' + (data.error || 'Failed to start payment.');
+          setStatus(data.error || 'Failed to start payment.', 'error');
         }
         return;
       }
 
       // Free path: donationMode === 'free', or 'optional' with no amount entered.
       if (!sender && !message) {
-        statusText.textContent = '❌ Please enter a message.';
+        setStatus('Please enter a message.', 'error');
         return;
       }
 
@@ -424,8 +509,11 @@
       });
 
       const data = await res.json();
-      statusText.textContent =
-        data.success ? (data.message || '✅ Message sent!') : '❌ ' + (data.error || 'Something went wrong.');
+      if (data.success) {
+        setStatus(data.message || 'Message sent!', 'success');
+      } else {
+        setStatus(data.error || 'Something went wrong.', 'error');
+      }
     });
 
     const instapayPanel = document.getElementById('instapay-panel');
@@ -448,7 +536,7 @@
       instapayRetryBtn.style.display = 'none';
       instapayAmountField.value = `${data.reservedAmount} EGP`;
       instapayIdField.value = data.instapayId;
-      instapayStatusText.textContent = '⏳ Waiting for your payment to be confirmed...';
+      instapayStatusText.innerHTML = `${icon('clock')} Waiting for your payment to be confirmed...`;
 
       const expiresAt = new Date(data.expiresAt).getTime();
       pollTimer = setInterval(async () => {
@@ -461,7 +549,7 @@
           const statusData = await res.json();
           if (statusData.success && statusData.status === 'paid') {
             clearInterval(pollTimer);
-            instapayStatusText.textContent = '✅ Thank you! Your donation is on its way to the stream.';
+            instapayStatusText.innerHTML = `${icon('check')} Thank you! Your donation is on its way to the stream.`;
           } else if (statusData.success && statusData.status === 'expired') {
             stopPollingAsExpired();
           }
@@ -473,7 +561,7 @@
 
     function stopPollingAsExpired() {
       clearInterval(pollTimer);
-      instapayStatusText.textContent = '⌛ This reservation expired before we saw your payment.';
+      instapayStatusText.innerHTML = `${icon('x')} This reservation expired before we saw your payment.`;
       instapayRetryBtn.style.display = 'inline-block';
     }
 

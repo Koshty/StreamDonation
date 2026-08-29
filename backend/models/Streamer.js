@@ -46,7 +46,8 @@ donationMode: {
 },
 instapayId: { type: String, default: '' },
 instapaySmsSecret: { type: String, default: '' },
-requireVerifiedDonor: { type: Boolean, default: false }
+requireVerifiedDonor: { type: Boolean, default: false },
+authProvider: { type: String, enum: ['google', 'twitch'], default: 'google' }
 
 
 });

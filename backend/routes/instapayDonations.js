@@ -163,7 +163,7 @@ router.post('/start', async (req, res) => {
       const uniqueWords = [...new Set(allBadWords)].join(', ');
       return res.status(400).json({
         success: false,
-        error: `❌ Profanity is not allowed. Blocked word(s): ${uniqueWords}`
+        error: `Profanity is not allowed. Blocked word(s): ${uniqueWords}`
       });
     }
 
@@ -180,14 +180,18 @@ router.post('/start', async (req, res) => {
     if (streamerDoc.requireVerifiedDonor && !verified) {
       return res.status(400).json({
         success: false,
-        error: '❌ This streamer requires verified Google sign-in to donate.'
+        error: 'This streamer requires verified sign-in to donate.'
       });
     }
 
     if (verified) {
-      const banned = await BannedDonor.findOne({ streamerToken: streamerDoc.overlayToken, googleId: donorPayload.googleId });
+      const banned = await BannedDonor.findOne({
+        streamerToken: streamerDoc.overlayToken,
+        platform: donorPayload.platform,
+        externalId: donorPayload.externalId
+      });
       if (banned) {
-        return res.status(403).json({ success: false, error: '❌ You are not permitted to donate to this streamer.' });
+        return res.status(403).json({ success: false, error: 'You are not permitted to donate to this streamer.' });
       }
     }
 
@@ -200,7 +204,12 @@ router.post('/start', async (req, res) => {
         message,
         imageUrl,
         donorFields: verified
-          ? { donorVerified: true, googleId: donorPayload.googleId, donorAvatarUrl: donorPayload.picture }
+          ? {
+              donorVerified: true,
+              donorPlatform: donorPayload.platform,
+              ...(donorPayload.platform === 'twitch' ? { twitchId: donorPayload.externalId } : { googleId: donorPayload.externalId }),
+              donorAvatarUrl: donorPayload.picture
+            }
           : {}
       });
     } catch (err) {

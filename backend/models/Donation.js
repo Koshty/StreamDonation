@@ -73,12 +73,19 @@ const donationSchema = new mongoose.Schema({
     type: String
   },
 
-  // Verified Google donor identity (only populated when signed in via Google)
+  // Verified donor identity (only populated when signed in via Google or Twitch)
   donorVerified: {
     type: Boolean,
     default: false
   },
+  donorPlatform: {
+    type: String,
+    enum: ['google', 'twitch']
+  },
   googleId: {
+    type: String
+  },
+  twitchId: {
     type: String
   },
   donorAvatarUrl: {

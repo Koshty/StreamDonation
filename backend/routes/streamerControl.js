@@ -24,7 +24,8 @@ router.get('/:streamer/config', authMiddleware, async (req, res) => {
       donationMode: user.donationMode,
       instapayId: user.instapayId,
       instapaySmsSecret: user.instapaySmsSecret,
-      requireVerifiedDonor: user.requireVerifiedDonor
+      requireVerifiedDonor: user.requireVerifiedDonor,
+      authProvider: user.authProvider
     });
   } catch (err) {
     console.error('[GET CONFIG ERROR]', err);
@@ -62,7 +63,7 @@ router.post('/:streamer/pause', authMiddleware, async (req, res) => {
 // ✅ POST to save image URL, allowGifs, allowTTS
 router.post('/:streamer/settings', authMiddleware, async (req, res) => {
   const { streamer } = req.params;
-  const { imageUrl, allowGifs, allowTTS, donationMode, instapayId, requireVerifiedDonor } = req.body;
+  const { imageUrl, allowGifs, allowTTS, donationMode, instapayId, requireVerifiedDonor, authProvider } = req.body;
   const validModes = ['free', 'optional', 'paid'];
 
   if (req.user.username !== streamer) {
@@ -78,7 +79,8 @@ router.post('/:streamer/settings', authMiddleware, async (req, res) => {
         allowTTS: !!allowTTS ,
         donationMode: validModes.includes(donationMode) ? donationMode : 'free',
         instapayId: (instapayId || '').trim(),
-        requireVerifiedDonor: !!requireVerifiedDonor
+        requireVerifiedDonor: !!requireVerifiedDonor,
+        authProvider: authProvider === 'twitch' ? 'twitch' : 'google'
       },
       { new: true }
     );

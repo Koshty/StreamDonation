@@ -53,8 +53,10 @@ app.use(
 const instapayRouter = require('./routes/instapayDonations');
 app.use('/api/instapay', instapayRouter);
 
-// ✅ Verified Google donor identity + ban list
+// ✅ Verified donor identity (Google + Twitch) + shared ban list
 app.use('/api/google', require('./routes/googleAuth'));
+app.use('/api/twitch', require('./routes/twitchAuth'));
+app.use('/api/donors', require('./routes/donorBans'));
 
 // Periodic sweep: flip stale InstaPay reservations past their expiry to 'expired'
 setInterval(() => {
@@ -91,7 +93,11 @@ app.get('/donate', (_, res) =>
 app.get('/env-config', (req, res) => {
   const key = process.env.GIPHY_API_KEY;
   if (!key) return res.status(500).send('GIPHY key missing');
-  res.json({ giphyKey: key, googleClientId: process.env.GOOGLE_CLIENT_ID || '' });
+  res.json({
+    giphyKey: key,
+    googleClientId: process.env.GOOGLE_CLIENT_ID || '',
+    twitchClientId: process.env.TWITCH_CLIENT_ID || ''
+  });
 });
 
 // ✅ API to resolve overlay token securely

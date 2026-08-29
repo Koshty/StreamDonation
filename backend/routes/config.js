@@ -13,7 +13,8 @@ router.get('/:streamer', async (req, res) => {
       defaultImageUrl: user.defaultImageUrl,
       allowGifs: user.allowGifs,
       donationMode: user.donationMode,
-      requireVerifiedDonor: user.requireVerifiedDonor
+      requireVerifiedDonor: user.requireVerifiedDonor,
+      authProvider: user.authProvider
     });
   } catch (err) {
     console.error('[CONFIG GET ERROR]', err);

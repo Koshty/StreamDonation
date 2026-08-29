@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Signing in with Twitch...</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #121212;
+      color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      min-height: 100vh;
+      margin: 0;
+      text-align: center;
+      padding: 2rem;
+      box-sizing: border-box;
+    }
+    #status {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .icon {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+  <p id="status">Signing you in with Twitch...</p>
+
+  <script>
+    // Twitch's implicit-grant flow returns the token in the URL fragment,
+    // which never reaches the server — has to be read and forwarded client-side.
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const accessToken = hashParams.get('access_token');
+    const streamer = hashParams.get('state');
+    const statusEl = document.getElementById('status');
+    const errorIcon = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
+
+    if (!accessToken || !streamer) {
+      statusEl.innerHTML = `${errorIcon} Twitch sign-in failed (missing token). Return to the donation page and try again.`;
+    } else {
+      fetch('/api/twitch/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken, streamer })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            try {
+              sessionStorage.setItem(
+                `donorToken:${streamer}`,
+                JSON.stringify({ donorToken: data.donorToken, name: data.name, picture: data.picture })
+              );
+            } catch (err) { /* storage unavailable, not fatal */ }
+            window.location.href = `/donate?s=${encodeURIComponent(streamer)}`;
+          } else {
+            statusEl.innerHTML = `${errorIcon} ${data.error || 'Twitch sign-in failed.'}`;
+          }
+        })
+        .catch(() => {
+          statusEl.innerHTML = `${errorIcon} Twitch sign-in failed. Please return to the donation page and try again.`;
+        });
+    }
+  </script>
+</body>
+</html>

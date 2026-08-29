@@ -37,7 +37,7 @@ router.post('/test', async (req, res) => {
   if (!message) {
     return res.status(400).json({
       success: false,
-      error: '❌ You must provide a message in free mode.'
+      error: 'You must provide a message in free mode.'
     });
   }
 
@@ -58,7 +58,7 @@ router.post('/test', async (req, res) => {
     const uniqueWords = [...new Set(allBadWords)].join(', ');
     return res.status(400).json({
       success: false,
-      error: `❌ Profanity is not allowed. Blocked word(s): ${uniqueWords}`
+      error: `Profanity is not allowed. Blocked word(s): ${uniqueWords}`
     });
   }
 
@@ -69,21 +69,25 @@ router.post('/test', async (req, res) => {
     if (user.donationMode === 'paid') {
       return res.status(400).json({
         success: false,
-        error: '❌ This streamer requires a donation amount — use the amount field.'
+        error: 'This streamer requires a donation amount — use the amount field.'
       });
     }
 
     if (user.requireVerifiedDonor && !verified) {
       return res.status(400).json({
         success: false,
-        error: '❌ This streamer requires verified Google sign-in to donate.'
+        error: 'This streamer requires verified sign-in to donate.'
       });
     }
 
     if (verified) {
-      const banned = await BannedDonor.findOne({ streamerToken: user.overlayToken, googleId: donorPayload.googleId });
+      const banned = await BannedDonor.findOne({
+        streamerToken: user.overlayToken,
+        platform: donorPayload.platform,
+        externalId: donorPayload.externalId
+      });
       if (banned) {
-        return res.status(403).json({ success: false, error: '❌ You are not permitted to donate to this streamer.' });
+        return res.status(403).json({ success: false, error: 'You are not permitted to donate to this streamer.' });
       }
     }
 
@@ -104,7 +108,12 @@ router.post('/test', async (req, res) => {
       imageUrl: finalImageUrl,
       timestamp,
       shown: false,
-      ...(verified ? { donorVerified: true, googleId: donorPayload.googleId, donorAvatarUrl: donorPayload.picture } : {})
+      ...(verified ? {
+        donorVerified: true,
+        donorPlatform: donorPayload.platform,
+        ...(donorPayload.platform === 'twitch' ? { twitchId: donorPayload.externalId } : { googleId: donorPayload.externalId }),
+        donorAvatarUrl: donorPayload.picture
+      } : {})
     });
 
     await newDonation.save();
@@ -140,8 +149,8 @@ router.post('/test', async (req, res) => {
       success: true,
       emitted: donation,
       message: user.paused
-        ? '✅ Message sent! (Will appear after stream resumes)'
-        : '✅ Message sent!'
+        ? 'Message sent! (Will appear after stream resumes)'
+        : 'Message sent!'
     });
   } catch (err) {
     console.error('[DONATION POST ERROR]', err);

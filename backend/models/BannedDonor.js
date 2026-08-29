@@ -5,7 +5,12 @@ const bannedDonorSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  googleId: {
+  platform: {
+    type: String,
+    enum: ['google', 'twitch'],
+    required: true
+  },
+  externalId: {
     type: String,
     required: true
   },
@@ -18,6 +23,6 @@ const bannedDonorSchema = new mongoose.Schema({
   },
 });
 
-bannedDonorSchema.index({ streamerToken: 1, googleId: 1 }, { unique: true });
+bannedDonorSchema.index({ streamerToken: 1, platform: 1, externalId: 1 }, { unique: true });
 
 module.exports = mongoose.model('BannedDonor', bannedDonorSchema);
