@@ -6,7 +6,7 @@ const Streamer = require('../models/Streamer');
 const Donation = require('../models/Donation');
 const BannedDonor = require('../models/BannedDonor');
 const generateTTS = require('../Utils/generateTTS');
-const { hasProfanity, getMatchedProfanities, normalize } = require('../Utils/profanity');
+const { hasProfanity, getMatchedProfanities } = require('../Utils/profanity');
 const { verifyDonorToken } = require('../Utils/donorToken');
 
 const donationQueue = {};
@@ -50,8 +50,8 @@ router.post('/test', async (req, res) => {
     username = 'Anonymous';
   }
 
-  const badMessageWords = getMatchedProfanities(normalize(message));
-  const badUsernameWords = verified ? [] : getMatchedProfanities(normalize(username));
+  const badMessageWords = getMatchedProfanities(message);
+  const badUsernameWords = verified ? [] : getMatchedProfanities(username);
 
   if (badUsernameWords.length || badMessageWords.length) {
     const allBadWords = [...badUsernameWords, ...badMessageWords];

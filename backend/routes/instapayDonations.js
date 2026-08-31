@@ -4,7 +4,7 @@ const Streamer = require('../models/Streamer');
 const Donation = require('../models/Donation');
 const BannedDonor = require('../models/BannedDonor');
 const authMiddleware = require('../middleware/authMiddleware');
-const { getMatchedProfanities, normalize } = require('../Utils/profanity');
+const { getMatchedProfanities } = require('../Utils/profanity');
 const { verifyDonorToken } = require('../Utils/donorToken');
 const generateTTS = require('../Utils/generateTTS');
 
@@ -162,8 +162,8 @@ router.post('/start', async (req, res) => {
     const verified = !!(donorPayload && donorPayload.streamer === streamer);
     const finalUsername = verified ? donorPayload.name : (username || 'Anonymous');
 
-    const badMessageWords = getMatchedProfanities(normalize(message));
-    const badUsernameWords = verified ? [] : getMatchedProfanities(normalize(finalUsername));
+    const badMessageWords = getMatchedProfanities(message);
+    const badUsernameWords = verified ? [] : getMatchedProfanities(finalUsername);
     if (badUsernameWords.length || badMessageWords.length) {
       const allBadWords = [...badUsernameWords, ...badMessageWords];
       const uniqueWords = [...new Set(allBadWords)].join(', ');
